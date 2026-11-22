@@ -63,14 +63,14 @@ Use `Promise.allSettled` (not `Promise.all`) when N independent operations must 
 
 ### NestJS unit testing patterns
 
-**Unbound-method fix:** never pass a method directly to `expect()` from a typed object — use `jest.spyOn()`:
+**Unbound-method fix:** never pass a method directly to `expect()` from a typed object — use `vi.spyOn()`:
 
 ```typescript
 // ❌ triggers @typescript-eslint/unbound-method
 expect(bot.sendMessage).toHaveBeenCalled();
 
 // ✅ capture the spy BEFORE calling the method under test
-const sendSpy = jest.spyOn(bot, 'sendMessage');
+const sendSpy = vi.spyOn(bot, 'sendMessage');
 await service.sendDigest(vacancies);
 expect(sendSpy).toHaveBeenCalled();
 ```
@@ -78,7 +78,7 @@ expect(sendSpy).toHaveBeenCalled();
 **ConfigService mocking:** use `mockImplementation` with a key switch, not `mockReturnValue` — otherwise all keys return the same value and env-gated branches stay uncovered:
 
 ```typescript
-jest.spyOn(configService, 'get').mockImplementation((key: string) => {
+vi.spyOn(configService, 'get').mockImplementation((key: string) => {
   if (key === 'OLLAMA_URL') {
     return 'http://localhost:11434';
   }

@@ -48,6 +48,9 @@ the only signal a reader has. `htmlCSSParser` keeps the seam visible.
   3. Workspace packages (`@job-agent/shared`, `@job-agent/db`, …)
   4. Relative imports (`./`, `../`)
 - [ ] Each group is separated by a blank line
+- [ ] ESM (`module: nodenext`): a relative import carries the `.js` extension of the compiled file —
+      `import { VacancyService } from './vacancy.service.js'`, never without an extension or with `.ts`
+- [ ] A workspace package is imported by its name (`@job-agent/db`), never by a relative path into another package
 
 ## Constants & Magic Numbers
 

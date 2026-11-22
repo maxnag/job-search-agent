@@ -121,10 +121,13 @@ database.
 ## Branches and commits
 
 - [ ] Never work on `main` directly — branch first: `feature/<slug>`, `fix/<slug>`, `docs/<slug>`
-- [ ] Commit messages are short — subject + 2–4 bullets of what changed:
+- [ ] Commit messages are Conventional Commits (`feat(api): …`, `fix: …`, `chore: …`, `build:`, `ci:`, `docs:`),
+      short — subject + 2–4 bullets of what changed; the `commit-msg` hook rejects anything else:
       [feedback-short-commit-messages.md](../../docs/memory/feedback-short-commit-messages.md)
 - [ ] Never commit `.env`, tokens, Gmail OAuth credentials, Telegram bot token, real e-mails or real
       vacancy dumps with personal data
+- [ ] A PR title is a Conventional Commit too — the squash merge turns it into the commit release-please reads
+- [ ] Versions, `CHANGELOG.md` and tags change only through the release PR of release-please — never by hand
 
 ---
 
@@ -158,5 +161,5 @@ database.
 
 - [ ] Does any LLM call decide whether a vacancy fits? It must not — that is a filter or the human
 - [ ] Is every external request rate-limited and time-limited?
-- [ ] Are DTOs / LLM outputs validated against a schema before use?
+- [ ] Are DTOs / LLM outputs validated with a Zod schema before use?
 - [ ] Does any log line carry an e-mail body, an address or a token? It must not

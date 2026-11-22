@@ -17,6 +17,17 @@
 - [ ] Extra fields go in an object — `this.logger.log({ message, site, links })` — never a second string
       to `log`/`warn`/`debug` (the second argument is the context, not data). Only `error(message, stack)` takes a stack
 
+## Where the lines go
+
+- [ ] The API logs through `nestjs-pino`; code keeps `new Logger(ClassName.name)` from `@nestjs/common`
+- [ ] Development: one readable line per event (`pino-pretty`); elsewhere JSON on stdout. With
+      `OTEL_EXPORTER_OTLP_ENDPOINT` set, lines also go to Loki over OTLP — view them in Grafana (`GRAFANA_PORT`)
+- [ ] Loki labels are only the resource attributes (`service_name`, `service_namespace`, environment). A vacancy id,
+      a Gmail `messageId`, a request id or a site are **fields**, never labels — a label per value explodes the index
+- [ ] A request line carries method, url, status and duration only — never headers or bodies; `/health` is not logged
+- [ ] Secret-shaped keys are redacted by `LOG_REDACT_PATHS` (`@job-agent/shared`) — a new secret field goes there
+- [ ] MCP servers write only to stderr — stdout belongs to the protocol
+
 ## Log an error once, where its cause is known
 
 - [ ] Never `catch (error) { this.logger.error(error); throw error; }` — log once, at the level above

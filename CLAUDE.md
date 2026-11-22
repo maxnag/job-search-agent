@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `e5f826c` (initial commit)
-> Run `git log e5f826c..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `4fb1ab6` (project docs; phase 1 scaffold synced on top of it)
+> Run `git log 4fb1ab6..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -70,26 +70,32 @@ Job Search Agent collects vacancies from career pages and from job-alert e-mails
 
 **Target market:** Israel (priority — whole country, full-time / hybrid) and Ukraine (remote). Working language English; vacancies requiring Hebrew are filtered out.
 
-**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, Gmail API (read-only), Telegram bot, MCP servers over stdio. Claude Haiku 5.5 only as a fallback for site navigation.
+**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, Gmail API (read-only), Telegram bot (grammY), MCP servers over stdio, Drizzle ORM, Zod 4, Vitest, pino → Loki + Grafana. LLM: Ollama on the Mac or Claude Haiku 5.5 in the cloud — chosen by `LLM_PROVIDER`, never by code.
 
-**Runs on:** the owner's Mac (Apple Silicon). NestJS, MCP servers, Playwright and Ollama run on the host; only Postgres and Redis run in Docker.
+**Runs on:** the owner's Mac (Apple Silicon). NestJS, MCP servers, Playwright and Ollama run on the host; Postgres, Redis, Loki and Grafana run in Docker. Development currently happens on Linux with `LLM_PROVIDER=anthropic`.
 
 **Phases, progress and open questions** live in the master plan in `.claude/plans/` — never in this file or in `docs/`.
 
 ## Commands
 
-> The scripts appear together with the monorepo. Update this block when they change.
-
 ```bash
-docker compose up -d                   # postgres + redis
+docker compose up -d                   # postgres, redis, loki, grafana (http://localhost:3003)
 pnpm install                           # respects minimumReleaseAge (7 days)
-pnpm --filter api start:dev            # NestJS app: workers, agents, Telegram
-pnpm typecheck                         # tsc --noEmit across the workspace
+pnpm db:migrate && pnpm db:migrate:test  # apply migrations to the dev and the test database
+pnpm db:seed                           # reference data, idempotent; db:seed:dev — fictional demo data
+pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
+pnpm dev                               # tsc -b --watch + API with node --watch (Bull Board at BULL_BOARD_PATH)
+pnpm build                             # tsc -b over the project references
+pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
 pnpm lint:fix && pnpm prettier:fix
-pnpm test                              # unit tests
+pnpm test                              # Vitest unit tests; env from .env.example, never from .env
 npx playwright install chromium        # once per machine
-ollama pull qwen3:9b && ollama pull qwen3:27b
+ollama pull qwen3:9b && ollama pull qwen3:27b  # Mac only, then LLM_PROVIDER=ollama
 ```
+
+**Releases:** commits and PR titles follow Conventional Commits; release-please keeps a release PR open on `main`.
+Merging it bumps every `package.json`, writes `CHANGELOG.md`, tags `vX.Y.Z` and pushes the image
+`ghcr.io/maxnag/job-search-agent-api` after a Trivy scan. Versions are never edited by hand.
 
 ## Architecture
 
@@ -112,15 +118,18 @@ Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)    �
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
 
-## Planned layout
+## Layout
 
 ```
-apps/api/            NestJS 12: workers, agents, Telegram
-apps/web/            Nuxt UI — optional, later
-packages/shared/     types and schemas (vacancy JSON, statuses)
-packages/db/         Postgres schema, migrations, client
-packages/mcp/        MCP servers: jobs-db, browser, gmail, notify
-docker-compose.yml   postgres + redis
+apps/api/            NestJS 12: workers, agents, Telegram, /health, Bull Board
+apps/web/            Nuxt UI — optional, later (not created yet)
+packages/shared/     shared enums and registries: queue, job and scheduler names, log constants
+packages/db/         Drizzle schema, SQL migrations, seeds, client
+packages/mcp/        MCP servers over stdio: jobs-db, browser, gmail, notify
+docker/              Postgres init, Loki config, Grafana provisioning and dashboard
+docker-compose.yml   postgres, redis, loki, grafana
+Dockerfile           image of apps/api (release artifact)
+.github/             CI, release-please, dependabot
 pnpm-workspace.yaml  workspaces + minimumReleaseAge
 ```
 
@@ -134,7 +143,7 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 - Never let an LLM decide whether a vacancy fits — that is a filter in code or the human
 - Gmail access is **read-only**; the project never sends, deletes or labels mail
 - Skills: `pr-ready` (checks before a PR), `docs-sync` (docs after a change); command `/deps-update` (minor updates)
-- Commits are short: [docs/memory/feedback-short-commit-messages.md](docs/memory/feedback-short-commit-messages.md)
+- Commits are Conventional Commits and short: [docs/memory/feedback-short-commit-messages.md](docs/memory/feedback-short-commit-messages.md)
 
 ## Where to Look
 
@@ -146,6 +155,6 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 
 ## Related Documentation
 
-- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing. Rules for agents, queues, browser and MCP are added when that code appears
+- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database. Rules for agents, queues, browser and MCP are added when that code appears
 - [project-brief.md](docs/project-brief.md) · [tech-context.md](docs/tech-context.md) · [decisions.md](docs/decisions.md)
 - [MEMORY.md](docs/memory/MEMORY.md) — project memory

@@ -25,7 +25,9 @@ paths:
 
 ## Patterns & Conventions
 
-- [ ] Spy with `jest.spyOn()`, never reassign a method
+- [ ] Spy with `vi.spyOn()`, never reassign a method
+- [ ] Runner is Vitest with `unplugin-swc` (decorator metadata for Nest DI); test env comes from `.env.example`
+      plus placeholders in `vitest.config.mts` — a spec never reads `.env` and never a real secret
 - [ ] ConfigService mocking — key switch, never `mockReturnValue` (see [project-knowledge.md](project-knowledge.md))
 - [ ] No snapshots for rules; snapshots only guard prompt bytes and rendered digest messages
 - [ ] Fixtures are fictional: a saved career page or e-mail is anonymised before it enters the repository —
@@ -44,5 +46,5 @@ Never make a spec pass by copying the new output into it.
 ## Before reporting tests done
 
 - [ ] The full suite passes
-- [ ] `tsc` passes over the changed specs (SWC / `@swc/jest` checks no types)
+- [ ] `tsc` passes over the changed specs (Vitest's transform checks no types — `pnpm typecheck` does)
 - [ ] `eslint` and `prettier --check` on every changed file, specs and fixtures included
