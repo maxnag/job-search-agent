@@ -1,0 +1,53 @@
+{
+  "name": "job-search-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "dev": "tsc -b && pnpm run \"/^dev:/\"",
+    "dev:build": "tsc -b --watch --preserveWatchOutput",
+    "dev:api": "pnpm --filter @job-agent/api start:dev",
+    "build": "tsc -b",
+    "typecheck": "tsc -b && pnpm -r --parallel exec tsc --noEmit -p tsconfig.json",
+    "lint": "eslint \"{apps,packages}/**/{src,test}/**/*.ts\"",
+    "lint:fix": "eslint --fix \"{apps,packages}/**/{src,test}/**/*.ts\"",
+    "prettier": "prettier --check \"{apps,packages}/**/{src,test}/**/*.ts\"",
+    "prettier:fix": "prettier --write \"{apps,packages}/**/{src,test}/**/*.ts\"",
+    "test": "vitest run",
+    "db:generate": "pnpm --filter @job-agent/db generate",
+    "db:migrate": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate",
+    "db:migrate:test": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate:test",
+    "db:seed": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed",
+    "db:seed:dev": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed:dev",
+    "db:studio": "pnpm --filter @job-agent/db studio"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@eslint/js": "^10.0.1",
+    "@swc/core": "^1.16.22",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/node": "^24.19.2",
+    "@vitest/eslint-plugin": "^1.6.28",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.18.1",
+    "eslint-plugin-jsdoc": "^65.4.8",
+    "eslint-plugin-prettier": "^5.5.7",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "globals": "^17.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^5.1.0"
+  }
+}

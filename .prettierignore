@@ -1,0 +1,7 @@
+**/*.md
+**/dist
+**/coverage
+**/node_modules
+pnpm-lock.yaml
+packages/db/migrations/meta/*.json
+CHANGELOG.md

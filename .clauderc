@@ -1,0 +1,13 @@
+{
+  "ignore": [
+    "**/.git/**",
+    "**/cache/**",
+    "**/code-coverage/**",
+    "**/dist/**",
+    "**/dist_db/**",
+    "**/logs/**",
+    "**/node_modules/**",
+    "**/temp/**"
+  ],
+  "autoIndex": false
+}

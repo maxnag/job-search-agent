@@ -1,0 +1,19 @@
+{
+  "name": "@job-agent/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "start:jobs-db": "node --enable-source-maps dist/servers/jobs-db.server.js",
+    "start:browser": "node --enable-source-maps dist/servers/browser.server.js",
+    "start:gmail": "node --enable-source-maps dist/servers/gmail.server.js",
+    "start:notify": "node --enable-source-maps dist/servers/notify.server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}

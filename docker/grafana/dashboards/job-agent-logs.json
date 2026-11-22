@@ -1,0 +1,89 @@
+{
+  "uid": "job-agent-logs",
+  "title": "Job Search Agent: logs",
+  "description": "Logs of the API. Paste a request id to follow one request; a level filter narrows the stream.",
+  "tags": ["job-agent"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "level",
+        "label": "Level",
+        "type": "custom",
+        "query": "trace,debug,info,warn,error,fatal",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": { "text": ["All"], "value": ["$__all"] }
+      },
+      {
+        "name": "search",
+        "label": "Text (regex)",
+        "type": "textbox",
+        "query": "",
+        "current": { "text": "", "value": "" }
+      },
+      {
+        "name": "request_id",
+        "label": "Request id (regex)",
+        "type": "textbox",
+        "query": ".*",
+        "current": { "text": ".*", "value": ".*" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Log lines by level",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 7 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (detected_level) (count_over_time({service_namespace=\"job-agent\"} | detected_level=~\"$level\" [$__auto]))",
+          "legendFormat": "{{detected_level}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "Warnings and errors",
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service_namespace=\"job-agent\"} | detected_level=~\"warn|error|fatal\" | drop scope_name | line_format \"{{.service_name}} · {{__line__}}\""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Lines (filtered by level, text and request id)",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 14 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service_namespace=\"job-agent\"} | detected_level=~\"$level\" |~ \"$search\" | request_id=~\"$request_id\" | drop scope_name | line_format \"{{.service_name}} · {{__line__}}\""
+        }
+      ]
+    }
+  ]
+}
