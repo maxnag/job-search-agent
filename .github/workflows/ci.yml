@@ -3,9 +3,6 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - '**/README.md'
-      - 'docs/**'
 
 concurrency:
   group: ci-${{ github.event.pull_request.number }}
@@ -15,8 +12,32 @@ permissions:
   contents: read
 
 jobs:
-  checks:
+  changes:
     if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+            docker:
+              - '{Dockerfile,.dockerignore,pnpm-lock.yaml,**/package.json}'
+
+  checks:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -32,26 +53,6 @@ jobs:
       - run: pnpm lint
       - run: pnpm prettier
       - run: pnpm test
-
-  changes:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      docker: ${{ steps.filter.outputs.docker }}
-    steps:
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        id: filter
-        with:
-          filters: |
-            docker:
-              - 'Dockerfile'
-              - '.dockerignore'
-              - '**/package.json'
-              - 'pnpm-lock.yaml'
 
   docker:
     needs: changes
