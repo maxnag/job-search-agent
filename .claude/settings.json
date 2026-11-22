@@ -1,0 +1,56 @@
+{
+  "cleanupPeriodDays": 60,
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
+    "BASH_DEFAULT_TIMEOUT_MS": "30000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(docker *)",
+      "Bash(git *)",
+      "Bash(grep *)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(psql:*)",
+      "Bash(redis-cli:*)",
+      "Bash(ollama list)",
+      "Bash(ollama ps)",
+      "Bash(node:*)",
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(open:*)",
+      "Read",
+      "WebSearch",
+      "Write",
+      "Edit",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Read(.env)",
+      "Edit(.env)",
+      "SendFeedback"
+    ],
+    "ask": [
+      "Bash(mv *)",
+      "Bash(ollama pull *)",
+      "Bash(ollama rm *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "model": "claude-opus-5-5",
+  "enabledMcpjsonServers": [
+    "playwright"
+  ],
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/statusline.sh"
+  },
+  "enabledPlugins": {},
+  "outputStyle": "Explanatory",
+  "language": "en-US",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "plansDirectory": ".claude/plans",
+  "autoMemoryDirectory": "./docs/memory"
+}
