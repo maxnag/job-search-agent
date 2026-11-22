@@ -29,7 +29,10 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 RUN ./node_modules/.bin/playwright install --with-deps chromium \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+              /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+              /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
