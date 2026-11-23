@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/maxnag/job-search-agent/compare/v0.1.0...v0.1.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **docker:** drop npm and yarn from the runtime image ([#4](https://github.com/maxnag/job-search-agent/issues/4)) ([a229a14](https://github.com/maxnag/job-search-agent/commit/a229a14ff400286dbbe3e25670cb78567553949a))
+
 ## 0.1.0 (2026-11-22)
 
 
