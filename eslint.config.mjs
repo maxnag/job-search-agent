@@ -121,7 +121,7 @@ export default defineConfig(
     }
   },
   {
-    files: ['*.mjs', '*.mts'],
+    files: ['*.mjs', '*.mts', '**/scripts/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       'import-x/no-named-as-default': 'off'

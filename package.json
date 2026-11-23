@@ -9,10 +9,10 @@
   },
   "scripts": {
     "prepare": "husky",
-    "dev": "tsc -b && pnpm run \"/^dev:/\"",
+    "dev": "tsc -b && pnpm --filter @job-agent/api build:assets && pnpm run \"/^dev:/\"",
     "dev:build": "tsc -b --watch --preserveWatchOutput",
     "dev:api": "pnpm --filter @job-agent/api start:dev",
-    "build": "tsc -b",
+    "build": "tsc -b && pnpm --filter @job-agent/api build:assets",
     "typecheck": "tsc -b && pnpm -r --parallel exec tsc --noEmit -p tsconfig.json",
     "lint": "eslint \"{apps,packages}/**/{src,test}/**/*.ts\"",
     "lint:fix": "eslint --fix \"{apps,packages}/**/{src,test}/**/*.ts\"",
@@ -24,7 +24,8 @@
     "db:migrate:test": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate:test",
     "db:seed": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed",
     "db:seed:dev": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed:dev",
-    "db:studio": "pnpm --filter @job-agent/db studio"
+    "db:studio": "pnpm --filter @job-agent/db studio",
+    "cv:import": "pnpm --silent build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/cv-import.js"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",

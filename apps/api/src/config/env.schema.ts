@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-import { LogLevelEnum } from '@job-agent/shared';
-
-import { LLMProviderEnum } from '../modules/llm/enums/l-l-m-provider.enum.js';
+import { LLMProviderEnum, LogLevelEnum } from '@job-agent/shared';
 
 /**
  * Treat an empty value (`KEY=` in `.env`) as a missing one
@@ -14,6 +12,17 @@ import { LLMProviderEnum } from '../modules/llm/enums/l-l-m-provider.enum.js';
 function emptyToUndefined(value: unknown): unknown {
   return value === '' ? undefined : value;
 }
+
+/**
+ * The key each LLM provider cannot start without. A `Record` over the enum: a new provider without an entry here does
+ * not compile, so the start-up check never forgets it
+ *
+ * @type {Readonly<Record<LLMProviderEnum, 'ANTHROPIC_API_KEY' | 'OLLAMA_URL'>>}
+ */
+export const LLM_PROVIDER_REQUIRED_KEYS: Readonly<Record<LLMProviderEnum, 'ANTHROPIC_API_KEY' | 'OLLAMA_URL'>> = {
+  [LLMProviderEnum.ANTHROPIC]: 'ANTHROPIC_API_KEY',
+  [LLMProviderEnum.OLLAMA]: 'OLLAMA_URL'
+};
 
 /**
  * Positive integer read from a string variable
@@ -44,23 +53,20 @@ export const envSchema = z
     BULL_BOARD_PATH: z.string().startsWith('/'),
 
     LLM_PROVIDER: z.enum(LLMProviderEnum),
-    LLM_MODEL_MAIL: z.string().min(1),
-    LLM_MODEL_EXTRACT: z.string().min(1),
-    LLM_MODEL_NAVIGATION: z.string().min(1),
     LLM_TIMEOUT_MS: positiveInt().default(60000),
     ANTHROPIC_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     OLLAMA_URL: z.preprocess(emptyToUndefined, z.url().optional()),
     EXTRACT_CONCURRENCY: positiveInt().default(1),
 
-    HEALTH_CHECK_TIMEOUT_MS: positiveInt().default(3000)
+    HEALTH_CHECK_TIMEOUT_MS: positiveInt().default(3000),
+
+    STORAGE_DIR: z.string().min(1).default('storage')
   })
   .superRefine((env, context) => {
-    if (env.LLM_PROVIDER === LLMProviderEnum.ANTHROPIC && !env.ANTHROPIC_API_KEY) {
-      context.addIssue({ code: 'custom', path: ['ANTHROPIC_API_KEY'], message: 'required when LLM_PROVIDER=anthropic' });
-    }
+    const key = LLM_PROVIDER_REQUIRED_KEYS[env.LLM_PROVIDER];
 
-    if (env.LLM_PROVIDER === LLMProviderEnum.OLLAMA && !env.OLLAMA_URL) {
-      context.addIssue({ code: 'custom', path: ['OLLAMA_URL'], message: 'required when LLM_PROVIDER=ollama' });
+    if (!env[key]) {
+      context.addIssue({ code: 'custom', path: [key], message: `required when LLM_PROVIDER=${env.LLM_PROVIDER}` });
     }
   });
 

@@ -12,7 +12,7 @@ import type { z } from 'zod';
  *
  * @returns {TOutput}
  */
-export function parseStructuredOutput<TOutput>(schema: z.ZodType<TOutput>, text: string): TOutput {
+export function parseSchemaAnswer<TOutput>(schema: z.ZodType<TOutput>, text: string): TOutput {
   let json: unknown;
 
   try {

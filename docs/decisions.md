@@ -35,6 +35,11 @@ finally, by the human through the digest buttons.
 - (+) Button presses become data to tune the rules
 - (−) Rules must be written and kept up to date by hand
 
+**Amendment (2026-11-23):** the rules come from the owner's resume, not only from config. The LLM extracts the
+resume and every vacancy into the same fields (skills by the shared dictionary, experience, spoken languages); code
+compares a vacancy with the current resume of a profile and names the reason of every mismatch. The LLM still never
+decides fit.
+
 ---
 
 ## ADR-003: No scraping of LinkedIn and Glassdoor
@@ -179,6 +184,13 @@ raw SQL must stay first-class.
 - (+) Moving to the Mac changes `.env`, not code; a step can use a stronger model alone
 - (−) Two adapters to keep in step; structured-output features differ between providers
 
+**Amendment (2026-11-23):** `.env` holds only the provider (`LLM_PROVIDER`, its key or URL, the timeout). The model
+and the request parameters of each step live in the `llm_settings` table (provider + step), tuned by hand; the
+`LLM_MODEL_*` keys are gone. The parameters are one JSONB under the provider's own names — Anthropic
+`{ max_tokens, thinking, effort }` (no temperature), Ollama `{ num_predict, temperature, num_ctx, … }` — checked by
+the provider's Zod schema; there is no separate column for any of them. The seed only inserts missing rows, so a
+tuned row survives `pnpm db:seed`.
+
 ---
 
 ## ADR-013: Releases by release-please, the image is the artifact
@@ -224,3 +236,34 @@ provisioned dashboard runs next to Loki in Docker.
 **Consequences:**
 - (+) Search by any field (request id, vacancy id) without a label explosion; the same code ships to Grafana Cloud
 - (−) Two more containers; Loki and Grafana are unauthenticated and must stay on `127.0.0.1`
+
+---
+
+## ADR-016: A profile is the latest version of a resume
+
+**Status:** Accepted
+
+**Context:** the search starts from the owner's resume; there may be several profiles (developer, cook …), and a
+resume changes over time.
+
+**Decision:** `pnpm cv:import <file> --profile <name>` parses the file by its extension (PDF now, other formats are
+new parsers), the LLM extracts it into one schema, and the result is a new resume version of the profile. The LLM
+only lists names and dates: the skills named in each job and the skills claimed in the summary or skills section.
+Years are counted by code from the job periods (a year without a month runs January to December, overlaps count
+once); a skill named only in a job's stack is kept with its years but is not claimed; the dictionary's `implies`
+adds periods (TypeScript → JavaScript). The latest
+imported version is the only source of truth — there are no manual corrections on top: a mistake is fixed in the
+resume and imported again. The same file again changes nothing; a file seen before becomes current again. The file
+is kept under `STORAGE_DIR`, never in git.
+
+**Consequences:**
+- (+) One source of truth, reproducible from a file; matches can point at the resume version they used
+- (+) A new resume format is one parser class
+- (+) Years are reproducible: the same file gives the same numbers
+- (−) Extraction quality depends on the prompt and the model; a job without a stack line adds no years to any skill
+
+**Amendment (2026-11-23):** the scan is reviewed by the owner before any search. Every skill of a version has a
+switch `resume_skill_is_hidden`: the owner hides what the resume names but is not theirs (a language only in a
+project's stack). A hidden skill takes no part in matching. The switches follow the current version: a new or
+restored version gets the hidden set of the version that was current, by skill key. The resume stays the source of
+the skills; the switch only decides which of them count.

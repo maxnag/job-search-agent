@@ -1,7 +1,7 @@
 import { type SQL, getTableColumns, sql } from 'drizzle-orm';
-import type { PgColumn, PgInsertValue, PgTable } from 'drizzle-orm/pg-core';
+import type { PgTable } from 'drizzle-orm/pg-core';
 
-import type { DatabaseExecutor } from '../client.js';
+import type { IUpsertRequest } from '../interfaces/upsert-request.interface.js';
 
 /**
  * Columns an upsert never overwrites: the creation time stays, the update time belongs to the trigger
@@ -9,41 +9,6 @@ import type { DatabaseExecutor } from '../client.js';
  * @type {ReadonlySet<string>}
  */
 const PRESERVED_COLUMNS: ReadonlySet<string> = new Set(['dt_create', 'dt_update']);
-
-/**
- * Rows to insert or update by their natural key
- *
- * @template TTable
- */
-export interface IUpsertRequest<TTable extends PgTable> {
-  /**
-   * Database or transaction to write to
-   *
-   * @var {DatabaseExecutor}
-   */
-  readonly db: DatabaseExecutor;
-
-  /**
-   * Table to write to
-   *
-   * @var {TTable}
-   */
-  readonly table: TTable;
-
-  /**
-   * Rows to write
-   *
-   * @var {readonly PgInsertValue<TTable>[]}
-   */
-  readonly rows: readonly PgInsertValue<TTable>[];
-
-  /**
-   * Natural key — the columns of a unique index the conflict is detected on
-   *
-   * @var {readonly PgColumn[]}
-   */
-  readonly target: readonly PgColumn[];
-}
 
 /**
  * Insert rows, or update every non-key column of the rows that already exist
@@ -75,6 +40,29 @@ export async function upsertRows<TTable extends PgTable>(request: IUpsertRequest
     .insert(request.table)
     .values([...request.rows])
     .onConflictDoUpdate({ target: [...request.target], set });
+
+  return result.rowCount ?? 0;
+}
+
+/**
+ * Insert only the rows whose natural key is missing (`INSERT … ON CONFLICT DO NOTHING`): for settings the owner
+ * tunes by hand, where the seed gives defaults and must never overwrite a tuned row
+ *
+ * @param {IUpsertRequest<TTable>} request
+ *
+ * @template TTable
+ *
+ * @returns {Promise<number>} The number of rows inserted
+ */
+export async function insertMissingRows<TTable extends PgTable>(request: IUpsertRequest<TTable>): Promise<number> {
+  if (request.rows.length === 0) {
+    return 0;
+  }
+
+  const result = await request.db
+    .insert(request.table)
+    .values([...request.rows])
+    .onConflictDoNothing({ target: [...request.target] });
 
   return result.rowCount ?? 0;
 }

@@ -11,6 +11,13 @@ digest. **The decision "fits / does not fit" belongs to the human, not to the ag
 - **Timeline:** 3–4 days to build, about a month of job search
 - **Runs on:** the owner's Mac (Apple Silicon, 64 GB)
 
+## Inputs
+
+1. **The resume** — `pnpm cv:import <file> --profile <name>`. The LLM extracts skills (with a kind and years),
+   experience and spoken languages; the latest version of a profile's resume is the source of truth for matching
+2. **Vacancies** — from career pages and from job-alert e-mails, extracted into the same fields and compared with the
+   profile by code
+
 ## Architecture
 
 Hybrid: agents where the path differs every time (site navigation, reading an e-mail), ordinary code

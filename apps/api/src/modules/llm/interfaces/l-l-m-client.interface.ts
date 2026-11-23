@@ -1,16 +1,15 @@
 import type { z } from 'zod';
 
-import type { LLMProviderEnum } from '../enums/l-l-m-provider.enum.js';
-import type { LLMStepEnum } from '../enums/l-l-m-step.enum.js';
+import type { LLMProviderEnum, LLMStepEnum } from '@job-agent/shared';
 
 /**
  * A request for an answer that must match a Zod schema
  *
  * @template TOutput
  */
-export interface IStructuredRequest<TOutput> {
+export interface ISchemaRequest<TOutput> {
   /**
-   * Pipeline step — selects the model from the environment
+   * Pipeline step — selects the model and its parameters from `llm_settings`
    *
    * @var {LLMStepEnum}
    */
@@ -36,17 +35,31 @@ export interface IStructuredRequest<TOutput> {
    * @var {z.ZodType<TOutput>}
    */
   readonly schema: z.ZodType<TOutput>;
-
-  /**
-   * Upper bound of generated tokens
-   *
-   * @var {number}
-   */
-  readonly maxTokens: number;
 }
 
 /**
- * Availability of the provider and the models of every step
+ * A validated answer and the model that gave it
+ *
+ * @template TOutput
+ */
+export interface ISchemaResult<TOutput> {
+  /**
+   * Answer validated against the request schema
+   *
+   * @var {TOutput}
+   */
+  readonly data: TOutput;
+
+  /**
+   * Model that produced the answer
+   *
+   * @var {string}
+   */
+  readonly model: string;
+}
+
+/**
+ * Availability of the provider, its models and the settings of every step
  */
 export interface ILLMHealth {
   /**
@@ -57,7 +70,7 @@ export interface ILLMHealth {
   readonly provider: LLMProviderEnum;
 
   /**
-   * True when the provider answers and every configured model exists
+   * True when the provider answers, every configured model exists and every step has settings
    *
    * @var {boolean}
    */
@@ -69,6 +82,13 @@ export interface ILLMHealth {
    * @var {readonly string[]}
    */
   readonly missingModels: readonly string[];
+
+  /**
+   * Steps without a row in `llm_settings`
+   *
+   * @var {readonly LLMStepEnum[]}
+   */
+  readonly missingSettings: readonly LLMStepEnum[];
 
   /**
    * Why the check failed
@@ -85,15 +105,15 @@ export interface ILLMClient {
   /**
    * Ask for an answer and return it validated against the request schema
    *
-   * @param {IStructuredRequest<TOutput>} request
+   * @param {ISchemaRequest<TOutput>} request
    *
    * @template TOutput
    *
    * @throws {Error} `LLM_OUTPUT_SCHEMA_INVALID` if the answer does not match the schema
    *
-   * @returns {Promise<TOutput>}
+   * @returns {Promise<ISchemaResult<TOutput>>}
    */
-  generateStructured<TOutput>(request: IStructuredRequest<TOutput>): Promise<TOutput>;
+  generateBySchema<TOutput>(request: ISchemaRequest<TOutput>): Promise<ISchemaResult<TOutput>>;
 
   /**
    * Check the provider without spending tokens

@@ -12,8 +12,12 @@ paths:
 - [ ] Agents and extractors depend on the `LLMClient` port (`apps/api/src/modules/llm`), never on
       `@anthropic-ai/sdk` or `ollama` directly — the provider is `LLM_PROVIDER`, a setting, not code
 - [ ] A new provider is a new adapter extending `LLMClient`, bound in `LLMModule`; callers do not change
-- [ ] The model is chosen per step (`LLMStepEnum` → `LLM_MODEL_<STEP>`), never a literal at the call site
-- [ ] Every request has a timeout (`LLM_TIMEOUT_MS`) and a `maxTokens` bound
+- [ ] The model and its parameters come from `llm_settings` (provider + step) through `LLMSettingsService`, never a
+      literal at the call site; a new step is a `LLMStepEnum` value plus a seed row
+- [ ] Provider parameters are validated by the provider's Zod schema (`schemas/*-params.schema.ts`); Anthropic has no
+      temperature — thinking and effort only
+- [ ] Every request has a timeout (`LLM_TIMEOUT_MS`) and the step's `max_tokens`; an answer cut by it is
+      `LLM_OUTPUT_TRUNCATED`, never parsed
 
 ## Structured output
 
