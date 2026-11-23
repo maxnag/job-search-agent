@@ -19,6 +19,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Browser | Playwright (Chromium), cheerio | 1.65.1, 1.2.0 | host |
 | Mail | `googleapis` (Gmail, read-only) | 190.0.0 | API |
 | Telegram | grammY | 1.46.0 | API |
+| Command output | `cli-table3` (tables), `util.styleText` of Node (colours) | 0.6.5 | host |
 | Agent tools | `@modelcontextprotocol/sdk`, stdio | 1.32.2 | host |
 | Logs | `nestjs-pino`, `pino`, `pino-opentelemetry-transport` | 5.3.1, 10.4.0, 4.0.2 | host |
 | Tests | Vitest + `unplugin-swc` (`@swc/core`) | 5.1.0, 2.0.0 (1.16.22) | host |
@@ -46,7 +47,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 
 | On the host (Mac; Linux for now) | In Docker (`docker compose up -d`) |
 |---|---|
-| NestJS, MCP servers, Playwright (`npx playwright install chromium`), Ollama (Mac) | PostgreSQL + pgvector, Redis, Loki, Grafana |
+| NestJS, MCP servers, Playwright (`npx playwright install chromium`; on a Linux Playwright has no build for — the system Chrome through `RENDER_BROWSER_CHANNEL=chrome`), Ollama (Mac) | PostgreSQL + pgvector, Redis, Loki, Grafana |
 
 Ollama runs on the host because Docker on macOS has no access to Metal; NestJS reaches it at `OLLAMA_URL`.
 Every container port is bound to `127.0.0.1` only; Loki and Grafana run without authentication for that reason.
@@ -80,3 +81,15 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `EXTRACT_CONCURRENCY` | `1` for Ollama, more for the cloud |
 | `HEALTH_CHECK_TIMEOUT_MS` | limit of each `/health` check |
 | `STORAGE_DIR` | resume files (`profiles/<profile_id>/resumes/<sha256>.<ext>`), relative to the command's working directory |
+| `JOB_ATTEMPTS`, `JOB_BACKOFF_MS` | attempts of a failed job and the first pause of its exponential backoff |
+| `HTTP_USER_AGENT`, `HTTP_TIMEOUT_MS` | User-Agent of a regular browser for every crawler request; timeout of an `html` request |
+| `CRAWL_DELAY_MIN_MS`, `CRAWL_DELAY_MAX_MS` | random pause after each request to a site; the minimum must not exceed the maximum |
+| `ROBOTS_CACHE_TTL_MS` | how long a site's `robots.txt` is trusted before it is read again |
+| `RENDER_BROWSER_CHANNEL` | empty — Playwright's own browser; `chrome` \| `chrome-beta` \| `msedge` — one installed in the system |
+| `RENDER_MAX_SCROLLS`, `RENDER_TIMEOUT_MS`, `RENDER_SCROLL_WAIT_MS` | limits of a `rendered` page: scrolls, whole page, wait for new links after a scroll |
+| `SEARCH_INTERVAL_HOURS`, `SEARCH_JITTER_MINUTES` | how often sources are scanned and the random shift of each |
+| `LISTING_MAX_LINKS` | most links of a listing page sent to the LLM |
+| `VACANCY_RECHECK_HOURS` | an extracted vacancy still listed is read again at most this often |
+| `VACANCY_TEXT_MAX_CHARS` | most characters of a vacancy page sent to the LLM |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | the owner's bot (`<bot id>:<secret>` from @BotFather) and the chat of the cards; both or neither — without them nothing is sent |
+| `NOTIFY_SWEEP_MINUTES` | how often cards not sent yet are picked up |

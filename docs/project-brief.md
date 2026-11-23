@@ -2,8 +2,8 @@
 
 ## Goal
 
-The agent collects vacancies from websites and from e-mail subscriptions, structures them and sends a
-digest. **The decision "fits / does not fit" belongs to the human, not to the agent.**
+The agent collects vacancies from websites and from e-mail subscriptions, structures them and sends
+Telegram cards. **The decision "fits / does not fit" belongs to the human, not to the agent.**
 
 - **Why:** real help with the job search, and a portfolio project (AI agents, MCP, queues)
 - **Geography:** Israel (priority — whole country, full-time / hybrid) and Ukraine (remote)
@@ -15,8 +15,8 @@ digest. **The decision "fits / does not fit" belongs to the human, not to the ag
 
 1. **The resume** — `pnpm cv:import <file> --profile <name>`. The LLM extracts skills (with a kind and years),
    experience and spoken languages; the latest version of a profile's resume is the source of truth for matching
-2. **Vacancies** — from career pages and from job-alert e-mails, extracted into the same fields and compared with the
-   profile by code
+2. **Vacancies** — from career pages (rows of `sources`, added by hand, filters may sit in the URL) and from job-alert
+   e-mails, extracted into the same fields and compared with the profile by code
 
 ## Architecture
 
@@ -30,9 +30,24 @@ owner's applications in plain words.
 **LinkedIn and Glassdoor are not scraped:** it violates their terms and risks the account. Their vacancies
 arrive only through Job Alert e-mails, and the data is taken from the e-mail itself.
 
-### Browser agent for career pages
+### Career pages
 
-The LLM drives Playwright once per site; afterwards code replays the saved **recipe** without an LLM.
+A source is fetched by code in the mode the owner set: `html` (one request) or `rendered` (headless Playwright,
+scrolled while new links appear). The crawler is polite (ADR-017): `robots.txt` first, one request at a time per site
+with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops the source and the owner is told.
+
+1. **Listing:** cheerio reduces the page to numbered links with the text around them; the LLM (`listing` step) picks the
+   vacancies by number and reads title, place, role family and level from the title
+2. **Screening by code** against the preferences of every profile: role family, lowest level, country, work mode,
+   excluded cities and companies. A position nobody wants is kept as `skipped` with the reason (ADR-018)
+3. **Extraction** of the rest, then matching and a Telegram card on each event (ADR-019)
+
+`pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason.
+
+### Browser agent for search forms
+
+For sites whose list comes only as the answer to a form. The LLM drives Playwright once per site; afterwards code
+replays the saved **recipe** without an LLM.
 
 1. **Open** the career page in headless Chromium
 2. **Detect the type:** a vacancy list → step 4; a search form (location, department, keywords) → step 3;
@@ -48,7 +63,7 @@ The LLM drives Playwright once per site; afterwards code replays the saved **rec
 **Guardrails:** at most 15 steps per site, timeouts, a pause of several seconds between requests, runs 1–2
 times a day. On failure a screenshot and a page snapshot are saved.
 
-### Mail, extraction, filters, digest
+### Mail, extraction, matching, notifications
 
 The mail agent classifies the e-mail (Qwen 9B) and picks an action:
 
@@ -60,16 +75,23 @@ The mail agent classifies the e-mail (Qwen 9B) and picks an action:
 | Rejection | update status |
 | Anything else | skip |
 
-**Extraction** (Qwen 27B, JSON by schema through Ollama's `format`): title, company, city, format (remote /
-hybrid / office), stack, level, language requirements, salary, short description. Stored as JSONB.
+**Extraction** (the `extract` step of the configured provider — Qwen 27B through Ollama's `format`, or Claude Haiku;
+JSON by schema): open or closed, title, company, level, country, city, work mode, programming languages required or
+nice to have, frameworks, years required, Hebrew (required / advantage / none), short summary. Skills are mapped onto
+the same dictionary as the resume. Stored as JSONB with the hash of the page text — an unchanged page is not read
+again. Web text is untrusted (ADR-020).
 
 **Dedup:** by URL, and by the normalized pair "company + title" (lowercase, without Ltd/Inc).
 
-**Filters are code, no LLM;** rules are config: required stack, location, no mandatory Hebrew, level,
-exclusion list.
+**Matching is code, no LLM** — one rule per file against the current resume and the preferences of each profile
+(`profile_preferences`): a required programming language the resume has, place and work mode, level, excluded
+companies, mandatory Hebrew → `no_fit`; more years than the resume → `almost`; Hebrew as an advantage is a mark.
+The worst finding decides: `fit` / `almost` / `no_fit`, each with its reasons. A new resume version re-matches every
+extracted vacancy without the LLM.
 
-**Telegram digest:** vacancies that passed the filters, with buttons *Interested*, *Skip*, *Applied*.
-Presses are stored and used to tune filters. The owner sends the CV themselves.
+**Telegram cards, on events:** a `fit` or `almost` vacancy at once, with buttons *Interested*, *Skip*, *Applied*;
+a closed or changed vacancy the owner already saw; a stopped source. `no_fit` is never sent. Presses are stored and
+used to tune the rules. The owner sends the CV themselves.
 
 ### Queues (BullMQ)
 
@@ -78,9 +100,9 @@ failure, and jobs that must survive the Mac's sleep.
 
 | Queue | Does | Specifics |
 |---|---|---|
-| `search` | search a site → list of links | per-site rate limiter, schedule 1–2 times a day |
+| `search` | scan a source → screened positions | Job Scheduler every `SEARCH_INTERVAL_HOURS` + jitter, `concurrency: 1`, one request at a time per site |
 | `email` | read an e-mail → links or a status | schedule every 30 minutes |
-| `extract` | open a vacancy → JSON → save | `concurrency: 1`, retries with growing backoff |
-| `notify` | digest and messages to Telegram | — |
+| `extract` | open a vacancy → JSON → match → save | `EXTRACT_CONCURRENCY` (`1` for Ollama), retries with growing backoff |
+| `notify` | cards and notices to Telegram | `concurrency: 1`, one message a second; sweep of unsent cards every `NOTIFY_SWEEP_MINUTES` |
 
 Schedules are Job Schedulers. Bull Board is mounted in NestJS as a separate route.
