@@ -5,4 +5,5 @@ export * from './interfaces/upsert-request.interface.js';
 export * from './schema/index.js';
 export * from './seeds/seed-set.interface.js';
 export * from './seeds/upsert.helper.js';
+export * from './testing/test-database.helper.js';
 export * from './triggers/dt-update.trigger.js';

@@ -69,6 +69,11 @@ without an LLM. The agent is re-engaged only when the recipe breaks. ATS boards 
 - (+) Daily runs are fast and free
 - (−) A recipe can break silently when a site changes — it must be detected and reported
 
+**Amendment (2026-11-23):** most career pages need no agent. A source is fetched by plain code in one of two modes
+set by the owner: `html` — one request, the list is in the HTML; `rendered` — headless Playwright opens the page,
+waits for the network and scrolls while the number of links grows. Filters written in the source URL cover the usual
+search forms. The agent and its recipe stay for sites whose list comes only as the answer to a form (ADR-017).
+
 ---
 
 ## ADR-005: Redis for BullMQ, Ollama on the host
@@ -267,3 +272,103 @@ switch `resume_skill_is_hidden`: the owner hides what the resume names but is no
 project's stack). A hidden skill takes no part in matching. The switches follow the current version: a new or
 restored version gets the hidden set of the version that was current, by skill key. The resume stays the source of
 the skills; the switch only decides which of them count.
+
+---
+
+## ADR-017: Career pages are the input, crawled politely
+
+**Status:** Accepted
+
+**Context:** the owner keeps a list of company career pages, often with the filters already in the URL. Sites tolerate
+a reader, not a bot that hammers them; ADR-003 already rules out fighting a site that does not want to be read.
+
+**Decision:** a source is a row of `sources` added by hand: a URL and a fetch mode (`html` or `rendered`, ADR-004
+amendment). Every request goes through one crawler:
+- `robots.txt` of the host is read before any page and obeyed (RFC 9309: the `*` group, longest match, `Allow` wins a
+  tie); a host whose `robots.txt` does not answer gets no request at all until it does
+- one request at a time per host, a random pause between `CRAWL_DELAY_MIN_MS` and `CRAWL_DELAY_MAX_MS` after each,
+  the User-Agent of a regular browser, a timeout on every request
+- 403, 429 or a challenge page (Cloudflare, DataDome, PerimeterX) stops the source (`source_status = blocked`), a
+  forbidden path stops it as `blocked_by_robots`; the owner is told and switches it back by hand
+- no proxy rotation, no captcha solving, no retry against a refusal
+- sources are scanned every `SEARCH_INTERVAL_HOURS`, each shifted by a random part of `SEARCH_JITTER_MINUTES`
+
+**Consequences:**
+- (+) A site sees a slow, regular visitor; the owner learns at once when a site says no
+- (+) One place holds every politeness rule for both fetch modes and for vacancy pages too
+- (−) A site behind a challenge stays unread — its vacancies must come from e-mail alerts
+
+---
+
+## ADR-018: Screen by title before extraction
+
+**Status:** Accepted
+
+**Context:** most links of a career page are vacancies the owner does not want (sales, QA, another country). Reading
+each of their pages with the LLM costs time and money for nothing.
+
+**Decision:** two LLM steps with code between them. `listing`: cheerio reduces the page to numbered links with the
+text around each; the LLM returns the links that are single vacancies — by **number**, never by URL — with title,
+place, role family and level from the title. Code then screens each position against the preferences of every
+profile (`profile_preferences`: role families, lowest level, places by country with work modes and excluded cities,
+excluded companies); a position no profile wants is stored as `skipped` with the reason. Only the rest go to
+`extract`, which reads the vacancy page into the fields of the profile. A page whose text hash did not change is not
+read by the LLM again. `pnpm vacancies:report` shows every position with its stage and reason, so the owner can check
+that the screening drops nothing they need.
+
+**Consequences:**
+- (+) The LLM reads only pages that may fit; a skipped position keeps a named reason (ADR-002)
+- (+) The LLM cannot invent or redirect a URL — it can only pick a link the page has
+- (−) A title that hides its role ("Hero #3") is classified by guess; the report is the safeguard
+
+---
+
+## ADR-019: Notifications on events, not a digest
+
+**Status:** Accepted
+
+**Context:** a scheduled digest delays a good vacancy by hours and repeats what the owner has already seen.
+
+**Decision:** a card goes to Telegram as soon as something happens: a vacancy matched as `fit` or `almost` against the
+current resume, a vacancy the owner was told about closed or changed, a source stopped. `no_fit` is never sent.
+A card is sent once per vacancy and profile — a new resume version inherits the time the card was sent. Cards that
+could not go out (no bot configured yet, Telegram down) are picked up every `NOTIFY_SWEEP_MINUTES`. The bot runs by
+long polling inside the API — no webhook, no public address — and answers only its own chat; a button press is
+stored in `vacancy_actions` with its history.
+
+**Consequences:**
+- (+) A good vacancy reaches the owner within one scan
+- (+) No duplicates across scans and resume versions
+- (−) A busy scan may send several messages in a row; the notify queue sends at most one per second
+
+---
+
+## ADR-020: Text from the web is untrusted
+
+**Status:** Accepted
+
+**Context:** a vacancy page is written by someone else. Its text may try to steer the LLM (prompt injection), and its
+links may point the crawler at the owner's machine or network (SSRF).
+
+**Decision:**
+- the LLM steps that read web text have **no tools**: one call, the answer constrained by a JSON schema and checked by
+  Zod; fit is decided by code (ADR-002). The worst an injection can do is fill a field wrongly, as a lying posting
+  would
+- the page text goes into the prompt fenced as `<posting>…</posting>`, the links as `<links>…</links>`; any such tag
+  inside the text is removed, and each prompt says the fenced text is data, never an instruction
+- hidden elements (`hidden`, `aria-hidden="true"`, inline `display:none` / `visibility:hidden`) are replaced with a
+  space before the text reaches the LLM
+- fields are clipped by code after validation (title 200, company 120, city 80, summary 1000 characters, at most 50
+  skills of a kind) — not refused by the schema, so one planted field cannot fail the scan of a whole page
+- every request, every redirect hop (`html` follows redirects by hand) and every request of a rendered page is
+  refused when its host resolves to a loopback, private, link-local, carrier-grade NAT, multicast or reserved
+  address (`PRIVATE_ADDRESS`, not retried); such a vacancy is skipped with the reason
+- Telegram cards escape every field and disable link previews
+
+**Consequences:**
+- (+) An injection cannot act, leak or decide; it can only mislead one vacancy, which the owner still reviews
+- (+) A link on a page cannot reach Bull Board, Redis, Postgres or a cloud metadata endpoint
+- (−) Text hidden by a CSS class is not recognized; a host that changes its DNS answer between the check and the
+  request (DNS rebinding) and a redirect inside the browser are not caught before the request is made
+- (−) Agents with tools (the browser and mail agents) need more: a domain allowlist in the tool code, a step and
+  budget limit, and their output treated as data checked by code

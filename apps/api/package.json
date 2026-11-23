@@ -25,6 +25,7 @@
     "@nestjs/platform-express": "^12.5.0",
     "bullmq": "^6.7.6",
     "cheerio": "^1.2.0",
+    "cli-table3": "^0.6.5",
     "drizzle-orm": "^0.45.4",
     "googleapis": "^190.0.0",
     "grammy": "^1.46.0",

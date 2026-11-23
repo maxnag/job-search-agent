@@ -3,3 +3,7 @@ export * from './profiles.table.js';
 export * from './resume-languages.table.js';
 export * from './resume-skills.table.js';
 export * from './resumes.table.js';
+export * from './sources.table.js';
+export * from './vacancies.table.js';
+export * from './vacancy-actions.table.js';
+export * from './vacancy-matches.table.js';

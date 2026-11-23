@@ -3,6 +3,7 @@
  */
 export enum LLMStepEnum {
   RESUME = 'resume',
+  LISTING = 'listing',
   MAIL = 'mail',
   EXTRACT = 'extract',
   NAVIGATION = 'navigation'

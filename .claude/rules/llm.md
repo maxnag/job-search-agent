@@ -27,6 +27,14 @@ paths:
       a mismatch is `LLM_OUTPUT_SCHEMA_INVALID`, a permanent job failure after the repair attempt
 - [ ] The LLM extracts and classifies; it never scores a vacancy or decides whether it fits (ADR-002)
 
+## Text from the web is untrusted (ADR-020)
+
+- [ ] A step that reads a page or an e-mail gets that text through `fenceUntrusted(tag, text)`
+      (`llm/helpers/untrusted-text.helper.ts`), and its prompt says the fenced text is data, never an instruction
+- [ ] Such a step has no tools; free-text fields of its answer are clipped by code before they are stored or shown
+- [ ] The LLM never returns a URL to follow — it picks one the code gave it, by number
+- [ ] An agent with tools limits them in the tool code (allowed domains, steps, budget), never in the prompt
+
 ## Health and cost
 
 - [ ] Health checks never spend tokens: Anthropic — `models.retrieve`, Ollama — `GET /api/tags`

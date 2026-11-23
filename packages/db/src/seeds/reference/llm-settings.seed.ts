@@ -13,12 +13,13 @@ import { insertMissingRows } from '../upsert.helper.js';
 const ANTHROPIC_DEFAULT_MODEL = 'claude-haiku-5-5';
 
 /**
- * Output budget of each step: a resume yields the largest structure, an e-mail the smallest
+ * Output budget of each step: a resume and a listing page yield the largest structures, an e-mail the smallest
  *
  * @type {Readonly<Record<LLMStepEnum, number>>}
  */
 const MAX_TOKENS: Readonly<Record<LLMStepEnum, number>> = {
   [LLMStepEnum.RESUME]: 8192,
+  [LLMStepEnum.LISTING]: 8192,
   [LLMStepEnum.EXTRACT]: 4096,
   [LLMStepEnum.MAIL]: 2048,
   [LLMStepEnum.NAVIGATION]: 4096

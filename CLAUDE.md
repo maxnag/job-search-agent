@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `4fb1ab6` (project docs; phase 1 scaffold synced on top of it)
-> Run `git log 4fb1ab6..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `6e61309` (vacancy digest from career pages, with its specs)
+> Run `git log 6e61309..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -66,7 +66,7 @@ Claude: [now edits the file]
 
 ## Project Overview
 
-Job Search Agent collects vacancies from career pages and from job-alert e-mails, extracts them into structured JSON with a local LLM, filters them with plain code and sends a Telegram digest. **The human decides whether a vacancy fits — the agent never does.** It is both a real job-search tool and a portfolio project (AI agents, MCP, queues).
+Job Search Agent collects vacancies from career pages and from job-alert e-mails, extracts them into structured JSON with an LLM, matches them with the owner's resume in plain code and sends a Telegram card for each one that fits. **The human decides whether a vacancy fits — the agent never does.** It is both a real job-search tool and a portfolio project (AI agents, MCP, queues).
 
 **Target market:** Israel (priority — whole country, full-time / hybrid) and Ukraine (remote). Working language English; vacancies requiring Hebrew are filtered out.
 
@@ -83,14 +83,17 @@ docker compose up -d                   # postgres, redis, loki, grafana (http://
 pnpm install                           # respects minimumReleaseAge (7 days)
 pnpm db:migrate && pnpm db:migrate:test  # apply migrations to the dev and the test database
 pnpm db:seed                           # reference data and default llm_settings, idempotent; db:seed:dev — demo data
-pnpm cv:import <file> --profile <name> # resume → new version of a profile (PDF); prints the extracted profile
+pnpm cv:import <file> --profile <name> # resume → new version of a profile (PDF); prints the profile, re-matches vacancies
+pnpm sources:scan [--source <id>] [--force]  # scan career pages now; the running API extracts what was queued
+pnpm vacancies:report [--source <id>]  # every position with its stage and reason — check the filters drop nothing
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm dev                               # tsc -b --watch + API with node --watch (Bull Board at BULL_BOARD_PATH)
 pnpm build                             # tsc -b over the project references
 pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
 pnpm lint:fix && pnpm prettier:fix
 pnpm test                              # Vitest unit tests; env from .env.example, never from .env
-npx playwright install chromium        # once per machine
+pnpm test:e2e                          # repositories against job_agent_test (db:migrate:test first)
+npx playwright install chromium        # once per machine; no build for the Linux → RENDER_BROWSER_CHANNEL=chrome
 ollama pull qwen3:9b && ollama pull qwen3:27b  # Mac only, then LLM_PROVIDER=ollama
 ```
 
@@ -101,22 +104,24 @@ Merging it bumps every `package.json`, writes `CHANGELOG.md`, tags `vX.Y.Z` and 
 ## Architecture
 
 ```
-career pages ─► search queue ─► (browser agent once per site → recipe) ─► links ─┐
-Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)    ─► links ─┤
-                                                                                 ▼
-                       extract queue (Qwen 27B → JSON) ─► dedup ─► filters (code) ─► notify queue ─► Telegram digest ─► human
+career pages ─► search queue ─► (html | rendered) ─► LLM picks links ─► screen (code) ─► links ─┐
+Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)                    ─► links ─┤
+                                                                                                 ▼
+           extract queue (LLM → JSON) ─► match with the current resume (code) ─► notify queue ─► Telegram card ─► human
 ```
 
 - **Resume first:** `cv:import` turns a resume into a profile version (skills by kind and years, experience, spoken languages); the latest version is the source of truth, vacancies are compared with it by code
 - **Hybrid design:** an agent only where the path differs every time (navigating a site, reading an e-mail); everything else is ordinary code. The LLM understands text and extracts data — it **never scores or judges a vacancy**
 - **Both channels converge** into one extraction step and one set of filters
-- **Browser agent** drives Playwright once per site and saves a **recipe** (action sequence or final URL with params); later runs replay the recipe without an LLM. The agent is re-engaged only when a recipe breaks. ATS-hosted boards (Comeet, Greenhouse, Lever) go through their public APIs
+- **Career pages** are rows of `sources`, fetched by code — `html` or `rendered` (headless Playwright, scrolled); the crawler obeys `robots.txt`, makes one request at a time per site with random pauses, and stops a source on 403 / 429 / captcha (ADR-017). The LLM picks vacancy links by number, code screens them by the profiles' preferences before any extraction (ADR-018)
+- **Browser agent** only for sites whose list answers a form: it drives Playwright once and saves a **recipe**; later runs replay it without an LLM. ATS-hosted boards (Comeet, Greenhouse, Lever) go through their public APIs
+- **Web text is untrusted** (ADR-020): LLM steps that read it have no tools, the text is fenced in the prompt, hidden elements are dropped, fields are clipped, and no request reaches a private address
 - **LinkedIn and Glassdoor are never scraped** — only their Job Alert e-mails are read, and the data comes from the e-mail itself
-- **Filters are code, rules are config:** stack, location, no mandatory Hebrew, level, exclusion list
+- **Matching is code:** one rule per file (`modules/matching/helpers/rules`) against the current resume and `profile_preferences` — languages, place, level, Hebrew, years, excluded companies; verdict `fit` / `almost` / `no_fit` with reasons
 - **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped)
-- **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`concurrency: 1` — Ollama serves one request at a time), `notify`. Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
+- **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
 - **MCP servers** `browser`, `gmail`, `jobs-db`, `notify` are the agents' tools, and the same servers plug into Claude Desktop so the owner can ask about their applications in plain words
-- **Telegram digest** has buttons *Interested / Skip / Applied*; presses are stored and used to tune filters. The owner sends the CV themselves
+- **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source; buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
 
