@@ -82,7 +82,8 @@ Job Search Agent collects vacancies from career pages and from job-alert e-mails
 docker compose up -d                   # postgres, redis, loki, grafana (http://localhost:3003)
 pnpm install                           # respects minimumReleaseAge (7 days)
 pnpm db:migrate && pnpm db:migrate:test  # apply migrations to the dev and the test database
-pnpm db:seed                           # reference data, idempotent; db:seed:dev — fictional demo data
+pnpm db:seed                           # reference data and default llm_settings, idempotent; db:seed:dev — demo data
+pnpm cv:import <file> --profile <name> # resume → new version of a profile (PDF); prints the extracted profile
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm dev                               # tsc -b --watch + API with node --watch (Bull Board at BULL_BOARD_PATH)
 pnpm build                             # tsc -b over the project references
@@ -106,6 +107,7 @@ Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)    �
                        extract queue (Qwen 27B → JSON) ─► dedup ─► filters (code) ─► notify queue ─► Telegram digest ─► human
 ```
 
+- **Resume first:** `cv:import` turns a resume into a profile version (skills by kind and years, experience, spoken languages); the latest version is the source of truth, vacancies are compared with it by code
 - **Hybrid design:** an agent only where the path differs every time (navigating a site, reading an e-mail); everything else is ordinary code. The LLM understands text and extracts data — it **never scores or judges a vacancy**
 - **Both channels converge** into one extraction step and one set of filters
 - **Browser agent** drives Playwright once per site and saves a **recipe** (action sequence or final URL with params); later runs replay the recipe without an LLM. The agent is re-engaged only when a recipe breaks. ATS-hosted boards (Comeet, Greenhouse, Lever) go through their public APIs
@@ -155,6 +157,6 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 
 ## Related Documentation
 
-- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database. Rules for agents, queues, browser and MCP are added when that code appears
+- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database, one-entity-per-file. Rules for agents, queues, browser and MCP are added when that code appears
 - [project-brief.md](docs/project-brief.md) · [tech-context.md](docs/tech-context.md) · [decisions.md](docs/decisions.md)
 - [MEMORY.md](docs/memory/MEMORY.md) — project memory

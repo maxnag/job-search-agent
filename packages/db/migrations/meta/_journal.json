@@ -8,6 +8,13 @@
       "when": 1795381656088,
       "tag": "0000_extensions-and-triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795425937966,
+      "tag": "0001_create-llm-settings-and-resumes",
+      "breakpoints": true
     }
   ]
 }

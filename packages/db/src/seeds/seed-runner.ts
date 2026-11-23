@@ -1,4 +1,4 @@
-import type { Database } from '../client.js';
+import type { Database } from '../interfaces/database-connection.interface.js';
 import type { ISeedSet } from './seed-set.interface.js';
 
 /**

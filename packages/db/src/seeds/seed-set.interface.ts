@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from '../client.js';
+import type { DatabaseExecutor } from '../interfaces/database-connection.interface.js';
 
 /**
  * One named set of seed rows

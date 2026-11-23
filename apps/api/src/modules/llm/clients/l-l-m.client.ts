@@ -1,4 +1,4 @@
-import type { ILLMClient, ILLMHealth, IStructuredRequest } from '../interfaces/l-l-m-client.interface.js';
+import type { ILLMClient, ILLMHealth, ISchemaRequest, ISchemaResult } from '../interfaces/l-l-m-client.interface.js';
 
 /**
  * Injection token of the LLM port; the module binds it to the adapter chosen by `LLM_PROVIDER`
@@ -7,13 +7,13 @@ export abstract class LLMClient implements ILLMClient {
   /**
    * Ask for an answer and return it validated against the request schema
    *
-   * @param {IStructuredRequest<TOutput>} request
+   * @param {ISchemaRequest<TOutput>} request
    *
    * @template TOutput
    *
-   * @returns {Promise<TOutput>}
+   * @returns {Promise<ISchemaResult<TOutput>>}
    */
-  abstract generateStructured<TOutput>(request: IStructuredRequest<TOutput>): Promise<TOutput>;
+  abstract generateBySchema<TOutput>(request: ISchemaRequest<TOutput>): Promise<ISchemaResult<TOutput>>;
 
   /**
    * Check the provider without spending tokens
