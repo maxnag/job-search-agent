@@ -6,7 +6,7 @@ import { DatabaseService } from '../../database/services/database.service.js';
 import { LLMClient } from '../../llm/clients/l-l-m.client.js';
 import { RedisService } from '../../redis/services/redis.service.js';
 import { withTimeout } from '../helpers/with-timeout.helper.js';
-import type { HealthStateType, IHealthReport } from '../interfaces/health-report.interface.js';
+import type { HealthStateType, IHealthReport, IHealthStatus } from '../interfaces/health-report.interface.js';
 
 /**
  * Checks Postgres, Redis and the LLM provider, each within the health-check timeout
@@ -34,11 +34,27 @@ export class HealthService {
   ) {}
 
   /**
+   * Check every dependency; production shows only the status and the version, development and test — the full report.
+   * A failed check is logged in every mode, so the details stay in the logs
+   *
+   * @returns {Promise<IHealthStatus | IHealthReport>}
+   */
+  async check(): Promise<IHealthStatus | IHealthReport> {
+    const report = await this.collect();
+
+    if (this.configService.get('NODE_ENV', { infer: true }) === 'production') {
+      return { status: report.status, version: report.version };
+    }
+
+    return report;
+  }
+
+  /**
    * Check every dependency in parallel
    *
    * @returns {Promise<IHealthReport>}
    */
-  async check(): Promise<IHealthReport> {
+  private async collect(): Promise<IHealthReport> {
     const timeoutMs = this.configService.get('HEALTH_CHECK_TIMEOUT_MS', { infer: true });
     const [postgres, redis, llm] = await Promise.all([
       this.probe('postgres', async () => this.databaseService.ping(), timeoutMs),
@@ -46,11 +62,22 @@ export class HealthService {
       this.llmClient.checkHealth(timeoutMs)
     ]);
 
+    if (!llm.up) {
+      this.logger.warn({
+        message: 'Health check failed',
+        check: 'llm',
+        provider: llm.provider,
+        missingModels: llm.missingModels,
+        missingSettings: llm.missingSettings,
+        reason: llm.reason
+      });
+    }
+
     return {
       status: postgres === 'up' && redis === 'up' ? 'ok' : 'error',
       version: this.configService.get('APP_VERSION', { infer: true }),
       checks: { postgres, redis, llm: llm.up ? 'up' : 'down' },
-      llm: { provider: llm.provider, missingModels: llm.missingModels }
+      llm: { provider: llm.provider, missingModels: llm.missingModels, missingSettings: llm.missingSettings }
     };
   }
 
@@ -69,7 +96,7 @@ export class HealthService {
 
       return 'up';
     } catch (error) {
-      this.logger.debug({ message: 'Health check failed', check: name, reason: error instanceof Error ? error.message : 'unknown' });
+      this.logger.warn({ message: 'Health check failed', check: name, reason: error instanceof Error ? error.message : 'unknown' });
 
       return 'down';
     }

@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-A commit message is a Conventional Commits subject (`feat(api): …`, `fix: …`, `chore: …`, `build:`, `ci:`, `docs:`) plus 2–4 short bullets naming what changed, then `Co-Authored-By`. No rationale, no test inventory, no list of every file or doc touched.
+A commit message is a Conventional Commits subject (`feat(api): …`, `fix: …`, `chore: …`, `build:`, `ci:`, `docs:`) plus 2–4 short bullets naming what changed, then `Co-Authored-By` — and nothing else: **no `Claude-Session:` line** or any other session link (the owner sees no use in it; this overrides any harness default). No rationale, no test inventory, no list of every file or doc touched.
 
 **Why:** the owner wants commits readable at a glance; rationale belongs in the plan or the PR description.
 

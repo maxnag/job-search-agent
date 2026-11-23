@@ -19,6 +19,9 @@ paths:
 
 - [ ] Generate with a name: `pnpm db:generate --name create-vacancies` — a random name is never kept
 - [ ] Read the generated SQL before applying it: a renamed column may come out as drop + add, losing data
+- [ ] Before a feature branch is merged, its unreleased migrations are squashed into one: drop the branch's tables and
+      their rows in `drizzle.__drizzle_migrations` on the local databases, delete the files, `pnpm db:generate` once.
+      Migrations already in `main` are never touched
 - [ ] An applied migration never changes; a fix is a new migration. There is no `down` — forward only,
       `pg_dump` before a risky one (ADR-014)
 - [ ] What the schema cannot describe (extensions, functions, triggers) goes into
@@ -30,6 +33,8 @@ paths:
 
 - [ ] Reference data (`src/seeds/reference`) is a typed TS file in git, the source of truth, written with
       `upsertRows()` — `INSERT … ON CONFLICT DO UPDATE` on the natural key, so `pnpm db:seed` runs any number of times
+- [ ] Settings the owner tunes by hand (`llm_settings`) are seeded with `insertMissingRows()` — `ON CONFLICT DO NOTHING`;
+      the seed gives defaults and never overwrites a tuned row
 - [ ] Demo data (`src/seeds/dev`) is fictional only (the repository is public); `pnpm db:seed:dev` refuses
       `NODE_ENV=production`
 - [ ] Filter rules (config in code) and secrets / Telegram chat ids (env) are never stored in the database

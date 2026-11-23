@@ -2,10 +2,13 @@ import { Logger } from '@nestjs/common';
 import { Ollama } from 'ollama';
 import { z } from 'zod';
 
-import { LLMProviderEnum } from '../enums/l-l-m-provider.enum.js';
-import { parseStructuredOutput } from '../helpers/structured-output.helper.js';
-import type { ILLMHealth, IStructuredRequest } from '../interfaces/l-l-m-client.interface.js';
-import type { LLMModelService } from '../services/l-l-m-model.service.js';
+import { LLMProviderEnum } from '@job-agent/shared';
+
+import { parseSchemaAnswer } from '../helpers/schema-answer.helper.js';
+import type { IOllamaLLMClientOptions } from '../interfaces/l-l-m-client-options.interface.js';
+import type { ILLMHealth, ISchemaRequest, ISchemaResult } from '../interfaces/l-l-m-client.interface.js';
+import { ollamaParamsSchema } from '../schemas/ollama-params.schema.js';
+import type { LLMSettingsService } from '../services/l-l-m-settings.service.js';
 import { LLMClient } from './l-l-m.client.js';
 
 /**
@@ -14,25 +17,6 @@ import { LLMClient } from './l-l-m.client.js';
  * @type {string}
  */
 const DEFAULT_TAG = ':latest';
-
-/**
- * Settings of the Ollama adapter
- */
-export interface IOllamaLLMClientOptions {
-  /**
-   * Ollama server URL
-   *
-   * @var {string}
-   */
-  readonly url: string;
-
-  /**
-   * Timeout of one generation request
-   *
-   * @var {number}
-   */
-  readonly timeoutMs: number;
-}
 
 /**
  * LLM port adapter for a local Ollama — structured output through the `format` parameter
@@ -61,11 +45,11 @@ export class OllamaLLMClient extends LLMClient {
 
   /**
    * @param {IOllamaLLMClientOptions} options
-   * @param {LLMModelService} llmModelService
+   * @param {LLMSettingsService} llmSettingsService
    */
   constructor(
     options: IOllamaLLMClientOptions,
-    private readonly llmModelService: LLMModelService
+    private readonly llmSettingsService: LLMSettingsService
   ) {
     super();
     this.url = options.url;
@@ -75,25 +59,26 @@ export class OllamaLLMClient extends LLMClient {
   /**
    * Ask the step model for an answer constrained by the request schema and validate it
    *
-   * @param {IStructuredRequest<TOutput>} request
+   * @param {ISchemaRequest<TOutput>} request
    *
    * @template TOutput
    *
    * @throws {Error} `LLM_OUTPUT_SCHEMA_INVALID` if the answer does not match the schema
    *
-   * @returns {Promise<TOutput>}
+   * @returns {Promise<ISchemaResult<TOutput>>}
    */
-  async generateStructured<TOutput>(request: IStructuredRequest<TOutput>): Promise<TOutput> {
+  async generateBySchema<TOutput>(request: ISchemaRequest<TOutput>): Promise<ISchemaResult<TOutput>> {
+    const settings = await this.llmSettingsService.findOne(request.step, ollamaParamsSchema);
     const messages = request.system ? [{ role: 'system', content: request.system }] : [];
     const response = await this.createClient(this.timeoutMs).chat({
-      model: this.llmModelService.resolve(request.step),
+      model: settings.model,
       messages: [...messages, { role: 'user', content: request.prompt }],
       format: z.toJSONSchema(request.schema),
-      options: { num_predict: request.maxTokens },
+      options: settings.params,
       stream: false
     });
 
-    return parseStructuredOutput(request.schema, response.message.content);
+    return { data: parseSchemaAnswer(request.schema, response.message.content), model: settings.model };
   }
 
   /**
@@ -104,20 +89,21 @@ export class OllamaLLMClient extends LLMClient {
    * @returns {Promise<ILLMHealth>}
    */
   async checkHealth(timeoutMs: number): Promise<ILLMHealth> {
-    const models = this.llmModelService.findAll();
+    const { models, missingSteps } = await this.llmSettingsService.findAll();
+    const health = { provider: LLMProviderEnum.OLLAMA, missingSettings: missingSteps };
 
     try {
       const { models: pulled } = await this.createClient(timeoutMs).list();
       const names = new Set(pulled.map(model => model.name));
       const missingModels = models.filter(model => !names.has(model) && !names.has(`${model}${DEFAULT_TAG}`));
 
-      return { provider: LLMProviderEnum.OLLAMA, up: missingModels.length === 0, missingModels };
+      return { ...health, up: missingModels.length === 0 && missingSteps.length === 0, missingModels };
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown error';
 
       this.logger.debug({ message: 'Ollama health check failed', reason });
 
-      return { provider: LLMProviderEnum.OLLAMA, up: false, missingModels: models, reason };
+      return { ...health, up: false, missingModels: models, reason };
     }
   }
 

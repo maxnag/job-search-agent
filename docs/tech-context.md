@@ -14,6 +14,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Redis client | `ioredis` (installed explicitly) | 6.0.0 | host |
 | ORM | Drizzle (`drizzle-orm` + `pg`, `drizzle-kit`) | 0.45.4, pg 8.23.1, kit 0.31.11 | host |
 | Schemas | Zod | 4.6.7 | host |
+| Resume parsing | `unpdf` (PDF text layer) | 2.2.1 | host |
 | LLM | Anthropic SDK / Ollama client | 1.8.0 / 0.6.4 | API / host (Mac) |
 | Browser | Playwright (Chromium), cheerio | 1.65.1, 1.2.0 | host |
 | Mail | `googleapis` (Gmail, read-only) | 190.0.0 | API |
@@ -29,7 +30,8 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 ## Notes
 
 - **LLM provider is a setting:** `LLM_PROVIDER=anthropic` (Claude Haiku 5.5, `claude-haiku-5-5`) while development
-  runs on Linux without Ollama; `LLM_PROVIDER=ollama` with Qwen3 9B / 27B on the Mac. The model is set per step
+  runs on Linux without Ollama; `LLM_PROVIDER=ollama` with Qwen3 9B / 27B on the Mac. Model, `max_tokens` and
+  provider parameters of each step are rows of the `llm_settings` table (ADR-012 amendment)
 - **LLM budget:** local is $0; Haiku 5.5 costs $0.10 / $0.50 per 1M input / output tokens
 - **NestJS 12:** the core is ESM; `@nestjs/config` validates env with a Standard Schema (Zod) asynchronously
 - **BullMQ 6:** legacy repeatable jobs are gone — schedules via `upsertJobScheduler`; worker connections use
@@ -59,9 +61,10 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 
 | Key | Purpose |
 |---|---|
-| `NODE_ENV` | `development` \| `test` \| `production` |
+| `NODE_ENV` | `development` \| `test` \| `production`; in production `/health` shows only `status` and `version` |
 | `APP_PORT` | HTTP port of the API |
 | `APP_VERSION` | version reported by `/health`; set by the image build, `dev` otherwise |
+| `TZ` | time zone of the app process and of every container (`Asia/Jerusalem` / `Europe/Kyiv`); Postgres also gets it as `timezone`, so dates in the database show in local time |
 | `LOG_LEVEL` | `trace` … `fatal`, default `info` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint of Loki (`http://localhost:3100/otlp`); empty — stdout only |
 | `LOKI_PORT`, `GRAFANA_PORT` | host ports of Loki and Grafana |
@@ -71,9 +74,9 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `REDIS_HOST`, `REDIS_PORT` | Redis of BullMQ and the app |
 | `BULL_BOARD_PATH` | route of Bull Board |
 | `LLM_PROVIDER` | `anthropic` \| `ollama` |
-| `LLM_MODEL_MAIL`, `LLM_MODEL_EXTRACT`, `LLM_MODEL_NAVIGATION` | model of each step |
 | `LLM_TIMEOUT_MS` | timeout of one LLM request |
 | `ANTHROPIC_API_KEY` | required when `LLM_PROVIDER=anthropic` |
 | `OLLAMA_URL` | required when `LLM_PROVIDER=ollama` |
 | `EXTRACT_CONCURRENCY` | `1` for Ollama, more for the cloud |
 | `HEALTH_CHECK_TIMEOUT_MS` | limit of each `/health` check |
+| `STORAGE_DIR` | resume files (`profiles/<profile_id>/resumes/<sha256>.<ext>`), relative to the command's working directory |

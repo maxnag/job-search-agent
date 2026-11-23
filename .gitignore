@@ -167,3 +167,10 @@ vite.config.ts.timestamp-*
 
 # Browser failures: screenshots and page snapshots
 storage/
+
+# Resumes: personal documents never enter this public repository; fixtures are fictional
+*.pdf
+*.doc
+*.docx
+*.odt
+!**/test/fixtures/**

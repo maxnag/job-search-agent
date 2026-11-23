@@ -1,6 +1,6 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 
-import type { IHealthReport } from '../interfaces/health-report.interface.js';
+import type { IHealthReport, IHealthStatus } from '../interfaces/health-report.interface.js';
 import { HealthService } from '../services/health.service.js';
 
 /**
@@ -14,14 +14,14 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   /**
-   * Report every dependency; answer 503 when Postgres or Redis is down
+   * Status and version (production) or every dependency (development, test); 503 when Postgres or Redis is down
    *
    * @throws {ServiceUnavailableException} If Postgres or Redis is down
    *
-   * @returns {Promise<IHealthReport>}
+   * @returns {Promise<IHealthStatus | IHealthReport>}
    */
   @Get()
-  async check(): Promise<IHealthReport> {
+  async check(): Promise<IHealthStatus | IHealthReport> {
     const report = await this.healthService.check();
 
     if (report.status === 'error') {

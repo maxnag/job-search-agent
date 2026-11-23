@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
-import { envSchema } from './config/env.schema.js';
+import { createConfigModule } from './config/config-module.factory.js';
 import { loggerParams } from './config/logger-params.helper.js';
 import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -15,7 +15,7 @@ import { RedisModule } from './modules/redis/redis.module.js';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true, ignoreEnvFile: true, validationSchema: envSchema }),
+    createConfigModule(),
     LoggerModule.forRootAsync({ inject: [ConfigService], useFactory: loggerParams }),
     DatabaseModule,
     RedisModule,
