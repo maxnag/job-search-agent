@@ -134,7 +134,7 @@ export default defineConfig(
     }
   },
   {
-    files: ['**/crawler/helpers/public-address.helper.ts'],
+    files: ['**/crawler/helpers/public-address.helper.ts', '**/crawler/**/*.spec.ts'],
     rules: {
       'sonarjs/no-hardcoded-ip': 'off'
     }

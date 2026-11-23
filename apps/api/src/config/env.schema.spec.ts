@@ -68,6 +68,54 @@ describe('envSchema', () => {
   });
 });
 
+describe('envSchema — crawling and Telegram', () => {
+  it('fills the defaults of the crawler, the search and the sweep', () => {
+    expect(envSchema.parse(BASE)).toMatchObject({
+      CRAWL_DELAY_MIN_MS: 3000,
+      CRAWL_DELAY_MAX_MS: 9000,
+      SEARCH_INTERVAL_HOURS: expect.any(Number) as number,
+      NOTIFY_SWEEP_MINUTES: expect.any(Number) as number
+    });
+    expect(envSchema.parse(BASE).RENDER_BROWSER_CHANNEL).toBeUndefined();
+  });
+
+  it('accepts equal crawl pauses and refuses a lower bound above the upper one', () => {
+    expect(issues({ ...BASE, CRAWL_DELAY_MIN_MS: '5000', CRAWL_DELAY_MAX_MS: '5000' })).toEqual([]);
+    expect(issues({ ...BASE, CRAWL_DELAY_MIN_MS: '5001', CRAWL_DELAY_MAX_MS: '5000' })).toEqual(['CRAWL_DELAY_MAX_MS']);
+  });
+
+  it('accepts a system browser channel and refuses an unknown one', () => {
+    expect(envSchema.parse({ ...BASE, RENDER_BROWSER_CHANNEL: 'chrome' }).RENDER_BROWSER_CHANNEL).toBe('chrome');
+    expect(issues({ ...BASE, RENDER_BROWSER_CHANNEL: 'chrom' })).toEqual(['RENDER_BROWSER_CHANNEL']);
+  });
+
+  it('accepts a bot token with a chat id, a channel id included', () => {
+    expect(issues({ ...BASE, TELEGRAM_BOT_TOKEN: '123456789:AAF-fictional_secret', TELEGRAM_CHAT_ID: '-1001234567890' })).toEqual([]);
+    expect(issues({ ...BASE, TELEGRAM_BOT_TOKEN: '123456789:AAF-fictional_secret', TELEGRAM_CHAT_ID: '42' })).toEqual([]);
+  });
+
+  it('accepts neither of them — Telegram switched off', () => {
+    expect(issues({ ...BASE, TELEGRAM_BOT_TOKEN: '', TELEGRAM_CHAT_ID: '' })).toEqual([]);
+  });
+
+  it.each([
+    ['a token without a chat id', { TELEGRAM_BOT_TOKEN: '123456789:AAF-fictional_secret' }],
+    ['a chat id without a token', { TELEGRAM_CHAT_ID: '42' }]
+  ])('refuses %s', (_case, telegram: Record<string, string>) => {
+    expect(issues({ ...BASE, ...telegram })).toEqual(['TELEGRAM_CHAT_ID']);
+  });
+
+  it.each(['AAF-fictional_secret', 'bot123:abc', '123456789 AAF'])('refuses the bot token %j, which @BotFather never gives', token => {
+    expect(issues({ ...BASE, TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: '42' })).toContain('TELEGRAM_BOT_TOKEN');
+  });
+
+  it.each(['@channel', '12a', '--1'])('refuses the chat id %j', chatId => {
+    expect(issues({ ...BASE, TELEGRAM_BOT_TOKEN: '123456789:AAF-fictional_secret', TELEGRAM_CHAT_ID: chatId })).toContain(
+      'TELEGRAM_CHAT_ID'
+    );
+  });
+});
+
 describe('LLM_PROVIDER_REQUIRED_KEYS', () => {
   it('names a required key for every provider', () => {
     const byName = (first: string, second: string): number => first.localeCompare(second);

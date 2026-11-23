@@ -14,8 +14,17 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: 'coverage',
       include: ['{apps,packages}/*/src/**/*.ts'],
-      exclude: ['**/*.spec.ts', '**/*.interface.ts', '**/*.enum.ts', '**/index.ts', '**/main.ts', '**/cli/**', '**/schema/**'],
-      thresholds: { statements: 76, branches: 73, functions: 73, lines: 76 }
+      exclude: [
+        '**/*.spec.ts',
+        '**/*.e2e-spec.ts',
+        '**/*.interface.ts',
+        '**/*.enum.ts',
+        '**/index.ts',
+        '**/main.ts',
+        '**/cli/**',
+        '**/schema/**'
+      ],
+      thresholds: { statements: 86, branches: 84, functions: 78, lines: 86 }
     },
     env: {
       NODE_ENV: 'test',
