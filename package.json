@@ -20,13 +20,16 @@
     "prettier:fix": "prettier --write \"{apps,packages}/**/{src,test}/**/*.ts\"",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run --config vitest.e2e.config.mts",
     "db:generate": "pnpm --filter @job-agent/db generate",
     "db:migrate": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate",
     "db:migrate:test": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate:test",
     "db:seed": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed",
     "db:seed:dev": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db seed:dev",
     "db:studio": "pnpm --filter @job-agent/db studio",
-    "cv:import": "pnpm --silent build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/cv-import.js"
+    "cv:import": "pnpm --silent build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/cv-import.js",
+    "sources:scan": "pnpm --silent build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-scan.js",
+    "vacancies:report": "pnpm --silent build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/vacancies-report.js"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",

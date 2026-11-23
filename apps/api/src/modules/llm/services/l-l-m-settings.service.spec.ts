@@ -90,7 +90,7 @@ describe('LLMSettingsService (unit)', () => {
 
       await expect(subjectUnderTest.findAll()).resolves.toEqual({
         models: ['claude-haiku-5-5', 'claude-sonnet-5-5'],
-        missingSteps: [LLMStepEnum.NAVIGATION]
+        missingSteps: [LLMStepEnum.LISTING, LLMStepEnum.NAVIGATION]
       });
     });
   });

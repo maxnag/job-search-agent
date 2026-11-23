@@ -134,7 +134,13 @@ export default defineConfig(
     }
   },
   {
-    files: ['**/*.spec.ts'],
+    files: ['**/crawler/helpers/public-address.helper.ts'],
+    rules: {
+      'sonarjs/no-hardcoded-ip': 'off'
+    }
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
     plugins: { vitest },
     rules: {
       ...vitest.configs.recommended.rules,

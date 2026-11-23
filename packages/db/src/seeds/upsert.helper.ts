@@ -12,7 +12,8 @@ const PRESERVED_COLUMNS: ReadonlySet<string> = new Set(['dt_create', 'dt_update'
 
 /**
  * Insert rows, or update every non-key column of the rows that already exist
- * (`INSERT … ON CONFLICT DO UPDATE`), so a seed can run any number of times
+ * (`INSERT … ON CONFLICT DO UPDATE`), so a seed can run any number of times. The primary key is never in the
+ * `SET` list: it is a `GENERATED ALWAYS` identity, which Postgres refuses to update
  *
  * @param {IUpsertRequest<TTable>} request
  *
@@ -29,7 +30,7 @@ export async function upsertRows<TTable extends PgTable>(request: IUpsertRequest
   const set: Record<string, SQL> = {};
 
   for (const [key, column] of Object.entries(getTableColumns(request.table))) {
-    if (targetNames.has(column.name) || PRESERVED_COLUMNS.has(column.name)) {
+    if (column.primary || targetNames.has(column.name) || PRESERVED_COLUMNS.has(column.name)) {
       continue;
     }
 

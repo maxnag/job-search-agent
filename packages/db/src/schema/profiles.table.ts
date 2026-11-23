@@ -1,12 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { integer, pgTable, text } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
 
 import { SkillKindEnum } from '@job-agent/shared';
 
 import { timestampColumns } from '../columns/timestamp.columns.js';
 
 /**
- * A search profile — one per kind of resume (developer, cook …); its current resume version is the source of truth
+ * A search profile — one per kind of resume (developer, cook …); its current resume version is the source of truth.
+ * `profile_preferences` — roles, minimum level, places and excluded companies, edited by hand and validated by a
+ * Zod schema on read
  */
 export const profiles = pgTable('profiles', {
   profile_id: integer('profile_id').primaryKey().generatedAlwaysAsIdentity(),
@@ -16,5 +18,6 @@ export const profiles = pgTable('profiles', {
     .$type<SkillKindEnum[]>()
     .notNull()
     .default(sql`ARRAY['${sql.raw(SkillKindEnum.PROGRAMMING_LANGUAGE)}']::text[]`),
+  profile_preferences: jsonb('profile_preferences').$type<Record<string, unknown>>().notNull().default({}),
   ...timestampColumns()
 });

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { profiles } from '@job-agent/db';
 
@@ -27,6 +27,15 @@ export class ProfileRepository {
     const [row] = await this.databaseService.db.select().from(profiles).where(eq(profiles.profile_name, name)).limit(1);
 
     return row;
+  }
+
+  /**
+   * Every profile
+   *
+   * @returns {Promise<ProfileRowType[]>}
+   */
+  async findAll(): Promise<ProfileRowType[]> {
+    return this.databaseService.db.select().from(profiles).orderBy(asc(profiles.profile_id));
   }
 
   /**

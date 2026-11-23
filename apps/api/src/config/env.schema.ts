@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { LLMProviderEnum, LogLevelEnum } from '@job-agent/shared';
 
+import { BrowserChannelEnum } from '../modules/crawler/enums/browser-channel.enum.js';
+
 /**
  * Treat an empty value (`KEY=` in `.env`) as a missing one
  *
@@ -23,6 +25,14 @@ export const LLM_PROVIDER_REQUIRED_KEYS: Readonly<Record<LLMProviderEnum, 'ANTHR
   [LLMProviderEnum.ANTHROPIC]: 'ANTHROPIC_API_KEY',
   [LLMProviderEnum.OLLAMA]: 'OLLAMA_URL'
 };
+
+/**
+ * User-Agent of a regular desktop browser — the crawler presents itself as one
+ *
+ * @type {string}
+ */
+const DEFAULT_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36';
 
 /**
  * Positive integer read from a string variable
@@ -51,6 +61,8 @@ export const envSchema = z
     REDIS_HOST: z.string().min(1),
     REDIS_PORT: positiveInt(),
     BULL_BOARD_PATH: z.string().startsWith('/'),
+    JOB_ATTEMPTS: positiveInt().default(3),
+    JOB_BACKOFF_MS: positiveInt().default(60000),
 
     LLM_PROVIDER: z.enum(LLMProviderEnum),
     LLM_TIMEOUT_MS: positiveInt().default(60000),
@@ -60,13 +72,54 @@ export const envSchema = z
 
     HEALTH_CHECK_TIMEOUT_MS: positiveInt().default(3000),
 
-    STORAGE_DIR: z.string().min(1).default('storage')
+    STORAGE_DIR: z.string().min(1).default('storage'),
+
+    HTTP_USER_AGENT: z.preprocess(emptyToUndefined, z.string().min(1).default(DEFAULT_USER_AGENT)),
+    HTTP_TIMEOUT_MS: positiveInt().default(20000),
+    CRAWL_DELAY_MIN_MS: positiveInt().default(3000),
+    CRAWL_DELAY_MAX_MS: positiveInt().default(9000),
+    ROBOTS_CACHE_TTL_MS: positiveInt().default(86400000),
+
+    RENDER_BROWSER_CHANNEL: z.preprocess(emptyToUndefined, z.enum(BrowserChannelEnum).optional()),
+    RENDER_MAX_SCROLLS: positiveInt().default(20),
+    RENDER_TIMEOUT_MS: positiveInt().default(60000),
+    RENDER_SCROLL_WAIT_MS: positiveInt().default(2500),
+
+    SEARCH_INTERVAL_HOURS: positiveInt().default(3),
+    SEARCH_JITTER_MINUTES: z.coerce.number().int().nonnegative().default(30),
+    LISTING_MAX_LINKS: positiveInt().default(500),
+    VACANCY_RECHECK_HOURS: positiveInt().default(24),
+    VACANCY_TEXT_MAX_CHARS: positiveInt().default(30000),
+
+    TELEGRAM_BOT_TOKEN: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(/^\d+:[\w-]+$/, 'expected <bot id>:<secret> from @BotFather')
+        .optional()
+    ),
+    TELEGRAM_CHAT_ID: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(/^-?\d+$/)
+        .optional()
+    ),
+    NOTIFY_SWEEP_MINUTES: positiveInt().default(5)
   })
   .superRefine((env, context) => {
     const key = LLM_PROVIDER_REQUIRED_KEYS[env.LLM_PROVIDER];
 
     if (!env[key]) {
       context.addIssue({ code: 'custom', path: [key], message: `required when LLM_PROVIDER=${env.LLM_PROVIDER}` });
+    }
+
+    if (Boolean(env.TELEGRAM_BOT_TOKEN) !== Boolean(env.TELEGRAM_CHAT_ID)) {
+      context.addIssue({ code: 'custom', path: ['TELEGRAM_CHAT_ID'], message: 'TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID go together' });
+    }
+
+    if (env.CRAWL_DELAY_MIN_MS > env.CRAWL_DELAY_MAX_MS) {
+      context.addIssue({ code: 'custom', path: ['CRAWL_DELAY_MAX_MS'], message: 'must not be less than CRAWL_DELAY_MIN_MS' });
     }
   });
 

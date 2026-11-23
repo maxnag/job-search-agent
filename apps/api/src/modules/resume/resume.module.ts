@@ -35,6 +35,6 @@ const RESUME_PARSERS: readonly Type<IResumeParser>[] = [PDFResumeParser];
     ResumeRepository,
     ResumeImportOrchestrator
   ],
-  exports: [ResumeImportOrchestrator]
+  exports: [ResumeImportOrchestrator, ProfileRepository]
 })
 export class ResumeModule {}
