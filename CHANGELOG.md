@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/maxnag/job-search-agent/compare/v0.2.0...v0.3.0) (2026-11-23)
+
+
+### Features
+
+* vacancy digest from career pages ([#10](https://github.com/maxnag/job-search-agent/issues/10)) ([a1994e8](https://github.com/maxnag/job-search-agent/commit/a1994e884783b2398cc265f0d424247d616661b9))
+
 ## [0.2.0](https://github.com/maxnag/job-search-agent/compare/v0.1.1...v0.2.0) (2026-11-23)
 
 
