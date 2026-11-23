@@ -122,7 +122,8 @@ database.
 
 - [ ] Never work on `main` directly — branch first: `feature/<slug>`, `fix/<slug>`, `docs/<slug>`
 - [ ] Commit messages are Conventional Commits (`feat(api): …`, `fix: …`, `chore: …`, `build:`, `ci:`, `docs:`),
-      short — subject + 2–4 bullets of what changed; the `commit-msg` hook rejects anything else:
+      short — subject + 2–4 bullets of what changed; the `commit-msg` hook rejects anything else. The trailer is
+      `Co-Authored-By` only — never a `Claude-Session:` line or another session link:
       [feedback-short-commit-messages.md](../../docs/memory/feedback-short-commit-messages.md)
 - [ ] Never commit `.env`, tokens, Gmail OAuth credentials, Telegram bot token, real e-mails or real
       vacancy dumps with personal data

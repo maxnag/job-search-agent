@@ -7,8 +7,6 @@ paths:
 # One Entity Per File
 
 > A file has one public identity. Its name declares it, and importing the file imports that one thing.
-> Adapted from the manuals project (itself adapted from hypergen-api).
-
 ## The rule
 
 - [ ] **A file exports at most one OOP entity** — one `class`, or one `interface`, or one `type`, or one `enum`.

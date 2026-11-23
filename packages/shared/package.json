@@ -11,5 +11,8 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
   }
 }

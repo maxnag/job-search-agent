@@ -10,6 +10,13 @@ export default defineConfig({
   test: {
     include: ['{apps,packages}/*/src/**/*.spec.ts'],
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: 'coverage',
+      include: ['{apps,packages}/*/src/**/*.ts'],
+      exclude: ['**/*.spec.ts', '**/*.interface.ts', '**/*.enum.ts', '**/index.ts', '**/main.ts', '**/cli/**', '**/schema/**'],
+      thresholds: { statements: 76, branches: 73, functions: 73, lines: 76 }
+    },
     env: {
       NODE_ENV: 'test',
       ANTHROPIC_API_KEY: 'test-key-never-sent',
