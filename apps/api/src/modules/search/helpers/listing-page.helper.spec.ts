@@ -49,6 +49,18 @@ describe('extractLinkCandidates', () => {
     expect(extractLinkCandidates(html, PAGE, 10)[0]?.context).toBe('Backend Developer Haifa · Hybrid');
   });
 
+  it('keeps the words of neighbouring elements apart in the context', () => {
+    const html = `<ul><li><div><a href="/jobs/1">Backend Developer</a><a href="/apply/1">Apply</a></div><div>Haifa</div></li><li>${'x'.repeat(400)}</li></ul>`;
+
+    expect(extractLinkCandidates(html, PAGE, 10)[0]?.context).toBe('Backend Developer Apply Haifa');
+  });
+
+  it('keeps a label apart from the heading inside one card link, without splitting inline text', () => {
+    const html = '<a href="/jobs/1"><span>Engineering</span><h3>Senior Software Engineer</h3><span>Isr</span><span>ael</span></a>';
+
+    expect(extractLinkCandidates(html, PAGE, 10)[0]?.text).toBe('Engineering Senior Software Engineer Israel');
+  });
+
   it('gives no context when the card holds nothing but the link text', () => {
     const html = '<div><a href="/jobs/1">Backend Developer</a></div>';
 

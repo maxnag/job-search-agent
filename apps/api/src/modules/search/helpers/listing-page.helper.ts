@@ -25,6 +25,14 @@ const WEB_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:']);
 const NON_CONTENT = 'script, style, noscript, svg, template, iframe';
 
 /**
+ * Elements whose text never runs on into its neighbours — a space before and after each keeps the words of a card
+ * apart; inline elements such as `span` are left alone, they may split one word
+ *
+ * @type {string}
+ */
+const SEPARATED = 'a, p, div, li, br, tr, td, th, h1, h2, h3, h4, h5, h6, section, article, dt, dd, button';
+
+/**
  * Text with every run of whitespace made one space
  *
  * @param {string} text
@@ -77,6 +85,7 @@ export function extractLinkCandidates(html: string, pageURL: string, maxLinks: n
 
   $(NON_CONTENT).remove();
   $(HIDDEN_CONTENT).replaceWith(' ');
+  $(SEPARATED).before(' ').after(' ');
 
   for (const element of $('a[href]').toArray()) {
     if (byURL.size >= maxLinks) {
