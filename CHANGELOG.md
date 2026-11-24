@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/maxnag/job-search-agent/compare/v0.6.0...v0.7.0) (2026-11-24)
+
+
+### Features
+
+* **api:** read job-alert e-mails over IMAP ([#20](https://github.com/maxnag/job-search-agent/issues/20)) ([ba593d9](https://github.com/maxnag/job-search-agent/commit/ba593d98ab4efa66000f56dc3d3d5ae7a366f000))
+
 ## [0.6.0](https://github.com/maxnag/job-search-agent/compare/v0.5.1...v0.6.0) (2026-11-24)
 
 
