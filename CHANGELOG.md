@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/maxnag/job-search-agent/compare/v0.4.0...v0.5.0) (2026-11-24)
+
+
+### Features
+
+* **api:** command help, typo hints and report filters ([#14](https://github.com/maxnag/job-search-agent/issues/14)) ([c8b9850](https://github.com/maxnag/job-search-agent/commit/c8b98503da79cb8cbfd762d1ecd62d39a1d3c8ff))
+
 ## [0.4.0](https://github.com/maxnag/job-search-agent/compare/v0.3.0...v0.4.0) (2026-11-24)
 
 
