@@ -5,7 +5,7 @@ import { sources } from '@job-agent/db';
 import { SourceStatusEnum } from '@job-agent/shared';
 
 import { DatabaseService } from '../../database/services/database.service.js';
-import type { SourceRowType } from '../interfaces/source-row.interface.js';
+import type { SourceInsertType, SourceRowType } from '../interfaces/source-row.interface.js';
 
 /**
  * Data access of the career pages
@@ -26,6 +26,32 @@ export class SourceRepository {
    */
   async findOne(sourceId: number): Promise<SourceRowType | undefined> {
     const [row] = await this.databaseService.db.select().from(sources).where(eq(sources.source_id, sourceId)).limit(1);
+
+    return row;
+  }
+
+  /**
+   * Source by its URL
+   *
+   * @param {string} url
+   *
+   * @returns {Promise<SourceRowType | undefined>}
+   */
+  async findByURL(url: string): Promise<SourceRowType | undefined> {
+    const [row] = await this.databaseService.db.select().from(sources).where(eq(sources.source_url, url)).limit(1);
+
+    return row;
+  }
+
+  /**
+   * Add a source; `undefined` when a source with the URL already exists
+   *
+   * @param {SourceInsertType} values
+   *
+   * @returns {Promise<SourceRowType | undefined>}
+   */
+  async create(values: SourceInsertType): Promise<SourceRowType | undefined> {
+    const [row] = await this.databaseService.db.insert(sources).values(values).onConflictDoNothing().returning();
 
     return row;
   }

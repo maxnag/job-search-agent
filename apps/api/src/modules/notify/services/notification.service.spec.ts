@@ -2,8 +2,10 @@ import { type DeepMocked, createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
+import { ATSKindEnum, SourceCandidateStatusEnum, VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
 
+import type { SourceCandidateRowType } from '../../discovery/interfaces/source-candidate-row.interface.js';
+import { SourceCandidateRepository } from '../../discovery/repositories/source-candidate.repository.js';
 import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
 import type { IMatchCard, IVacancyNotice } from '../interfaces/vacancy-notice.interface.js';
 import { NotificationRepository } from '../repositories/notification.repository.js';
@@ -25,24 +27,39 @@ const NOTICE: IVacancyNotice = {
 
 const CARD: IMatchCard = { ...NOTICE, vacancyMatchId: 31, notifiedAt: null, isCurrentResume: true };
 
+const CANDIDATE = {
+  source_candidate_id: 5,
+  source_candidate_ats_kind: ATSKindEnum.GREENHOUSE,
+  source_candidate_board: 'northwind',
+  source_candidate_company: 'Northwind',
+  source_candidate_status: SourceCandidateStatusEnum.PROPOSED,
+  source_candidate_positions: 9,
+  source_candidate_matching: 2,
+  source_candidate_unknown: 0,
+  source_candidate_examples: ['Backend Developer — Haifa']
+} as SourceCandidateRowType;
+
 describe('NotificationService (unit)', () => {
   let moduleFixture: TestingModule;
   let subjectUnderTest: NotificationService;
   let telegram: DeepMocked<TelegramService>;
   let events: DeepMocked<PipelineEventsService>;
   let notifications: DeepMocked<NotificationRepository>;
+  let candidates: DeepMocked<SourceCandidateRepository>;
 
   beforeEach(async () => {
     telegram = createMock<TelegramService>({ isConfigured: true });
     events = createMock<PipelineEventsService>();
     notifications = createMock<NotificationRepository>();
+    candidates = createMock<SourceCandidateRepository>();
     telegram.send.mockResolvedValue(555);
     moduleFixture = await Test.createTestingModule({
       providers: [
         NotificationService,
         { provide: TelegramService, useValue: telegram },
         { provide: PipelineEventsService, useValue: events },
-        { provide: NotificationRepository, useValue: notifications }
+        { provide: NotificationRepository, useValue: notifications },
+        { provide: SourceCandidateRepository, useValue: candidates }
       ]
     }).compile();
 
@@ -65,7 +82,8 @@ describe('NotificationService (unit)', () => {
         NotificationService,
         { provide: TelegramService, useValue: createMock<TelegramService>({ isConfigured: false }) },
         { provide: PipelineEventsService, useValue: events },
-        { provide: NotificationRepository, useValue: notifications }
+        { provide: NotificationRepository, useValue: notifications },
+        { provide: SourceCandidateRepository, useValue: candidates }
       ]
     }).compile();
     subjectUnderTest = moduleFixture.get(NotificationService);
@@ -177,6 +195,36 @@ describe('NotificationService (unit)', () => {
     });
   });
 
+  describe('sendSourceCandidate', () => {
+    it('sends the card of a proposed candidate with both decisions', async () => {
+      candidates.findOne.mockResolvedValue(CANDIDATE);
+
+      await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(true);
+
+      const [html, keyboard] = telegram.send.mock.calls[0] ?? [];
+
+      expect(html).toContain('<b>Northwind</b> (Greenhouse)');
+      expect(keyboard?.inline_keyboard.flat().map(button => button.text)).toEqual(['Add as a source', 'Ignore']);
+    });
+
+    it.each([SourceCandidateStatusEnum.ADDED, SourceCandidateStatusEnum.IGNORED, SourceCandidateStatusEnum.EMPTY])(
+      'sends nothing for a candidate already %s',
+      async status => {
+        candidates.findOne.mockResolvedValue({ ...CANDIDATE, source_candidate_status: status });
+
+        await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(false);
+        expect(telegram.send).not.toHaveBeenCalled();
+      }
+    );
+
+    it('sends nothing for a candidate that is gone', async () => {
+      candidates.findOne.mockResolvedValue(undefined);
+
+      await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(false);
+      expect(telegram.send).not.toHaveBeenCalled();
+    });
+  });
+
   describe('without Telegram', () => {
     it('quietly sends and queues nothing, leaving the cards for later', async () => {
       await withoutTelegram();
@@ -185,7 +233,9 @@ describe('NotificationService (unit)', () => {
       await expect(subjectUnderTest.sendClosed(7)).resolves.toBe(false);
       await expect(subjectUnderTest.sendChanged(7)).resolves.toBe(false);
       await expect(subjectUnderTest.sendSourceBlocked(1)).resolves.toBe(false);
+      await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(false);
       await expect(subjectUnderTest.queuePending()).resolves.toBe(0);
+      expect(candidates.findOne).not.toHaveBeenCalled();
       expect(notifications.findMatchCard).not.toHaveBeenCalled();
       expect(notifications.findPendingMatchIds).not.toHaveBeenCalled();
     });

@@ -79,6 +79,13 @@ describe('NotifyConsumer (unit)', () => {
       expect(notifications.sendSourceBlocked).toHaveBeenCalledWith(1);
     });
 
+    it('sends a company board card', async () => {
+      notifications.sendSourceCandidate.mockResolvedValue(true);
+
+      await expect(subjectUnderTest.process(job(JobNameEnum.SOURCE_CANDIDATE, { sourceCandidateId: 5 }))).resolves.toBe(true);
+      expect(notifications.sendSourceCandidate).toHaveBeenCalledWith(5);
+    });
+
     it('sweeps the pending cards', async () => {
       notifications.queuePending.mockResolvedValue(2);
 

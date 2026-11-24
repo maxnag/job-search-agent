@@ -75,10 +75,53 @@ function isDueForRecheck(row: VacancyRowType, recheckBefore: Date): boolean {
 }
 
 /**
+ * Country of the dedup key of a vacancy whose country was not known when it was listed
+ *
+ * @type {string}
+ */
+const UNKNOWN_COUNTRY = '';
+
+/**
+ * The known vacancy a position is, among the ones with its company + title key: the same country, else the one listed
+ * without a country; a position without a country is the one listed without a country, else the earliest. Two known
+ * countries are never one vacancy
+ *
+ * @param {ReadonlyArray<VacancyRowType> | undefined} rows Rows of the key, earliest first
+ * @param {string} country Country of the position, empty when unknown
+ *
+ * @returns {VacancyRowType | undefined}
+ */
+function sameVacancy(rows: ReadonlyArray<VacancyRowType> | undefined, country: string): VacancyRowType | undefined {
+  const unknown = rows?.find(row => row.vacancy_dedup_country === UNKNOWN_COUNTRY);
+
+  if (country === UNKNOWN_COUNTRY) {
+    return unknown ?? rows?.[0];
+  }
+
+  return rows?.find(row => row.vacancy_dedup_country === country) ?? unknown;
+}
+
+/**
+ * True when an insert of this scan already stands for the position: the same country, or one of them unknown
+ *
+ * @param {ReadonlySet<string> | undefined} countries Countries planned for the key
+ * @param {string} country
+ *
+ * @returns {boolean}
+ */
+function isPlanned(countries: ReadonlySet<string> | undefined, country: string): boolean {
+  if (!countries || countries.size === 0) {
+    return false;
+  }
+
+  return country === UNKNOWN_COUNTRY || countries.has(country) || countries.has(UNKNOWN_COUNTRY);
+}
+
+/**
  * What one scan writes: new positions are inserted at `listed` or `skipped`, known ones (by URL, then by the
- * company + title key, from any source) are updated, open vacancies of the source not on the page are closed,
- * extracted ones due for a recheck are named. A page
- * with no positions closes nothing — an empty answer is more likely a broken page than a company with no vacancies
+ * company + title key within the country, from any source) are updated, open vacancies of the source not on the page
+ * are closed, extracted ones due for a recheck are named. A page with no positions closes nothing — an empty answer is
+ * more likely a broken page than a company with no vacancies
  *
  * @param {IListingScanRequest} request
  *
@@ -86,16 +129,20 @@ function isDueForRecheck(row: VacancyRowType, recheckBefore: Date): boolean {
  */
 export function planListingScan(request: IListingScanRequest): IListingScanPlan {
   const byURL = new Map(request.known.map(row => [row.vacancy_url, row]));
-  const byKey = new Map(request.known.map(row => [row.vacancy_dedup_key, row]));
+  const byKey = Map.groupBy(
+    [...request.known].sort((left, right) => left.vacancy_id - right.vacancy_id),
+    row => row.vacancy_dedup_key
+  );
   const inserts: VacancyInsertType[] = [];
   const updates: IVacancyUpdate[] = [];
   const seenIds = new Set<number>();
-  const plannedKeys = new Set<string>();
+  const plannedKeys = new Map<string, Set<string>>();
   const recheckIds: number[] = [];
 
   for (const position of request.positions) {
     const dedupKey = vacancyDedupKey(position.company, position.title);
-    const known = byURL.get(position.url) ?? byKey.get(dedupKey);
+    const country = position.country ?? UNKNOWN_COUNTRY;
+    const known = byURL.get(position.url) ?? sameVacancy(byKey.get(dedupKey), country);
 
     if (known) {
       if (!seenIds.has(known.vacancy_id)) {
@@ -110,17 +157,19 @@ export function planListingScan(request: IListingScanRequest): IListingScanPlan 
       continue;
     }
 
-    if (plannedKeys.has(dedupKey)) {
+    if (isPlanned(plannedKeys.get(dedupKey), country)) {
       continue;
     }
 
-    plannedKeys.add(dedupKey);
+    plannedKeys.set(dedupKey, (plannedKeys.get(dedupKey) ?? new Set<string>()).add(country));
     inserts.push({
       source_id: request.sourceId,
       vacancy_url: position.url,
+      vacancy_external_id: position.externalId ?? null,
       vacancy_title: position.title,
       vacancy_company: position.company,
       vacancy_dedup_key: dedupKey,
+      vacancy_dedup_country: country,
       ...listingColumns(position),
       vacancy_stage: screenedStage(position),
       vacancy_first_seen_at: request.now,

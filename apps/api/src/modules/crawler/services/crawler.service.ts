@@ -5,6 +5,7 @@ import type { SourceFetchModeEnum } from '@job-agent/shared';
 import { CrawlErrorCodeEnum } from '../enums/crawl-error-code.enum.js';
 import { CrawlError } from '../errors/crawl.error.js';
 import { detectBlock } from '../helpers/block-detection.helper.js';
+import type { IFetchPageOptions } from '../interfaces/fetch-page-options.interface.js';
 import type { IFetchedPage } from '../interfaces/fetched-page.interface.js';
 import { AddressGuardService } from './address-guard.service.js';
 import { HostThrottleService } from './host-throttle.service.js';
@@ -82,6 +83,7 @@ export class CrawlerService {
    *
    * @param {string} url
    * @param {SourceFetchModeEnum} mode
+   * @param {IFetchPageOptions} [options] Limit of the request and pause before it
    *
    * @throws {CrawlError} `INVALID_URL` — not an http(s) URL
    * @throws {CrawlError} `PRIVATE_ADDRESS` — the host or a redirect resolves to a private address
@@ -92,7 +94,7 @@ export class CrawlerService {
    *
    * @returns {Promise<IFetchedPage>}
    */
-  async fetchPage(url: string, mode: SourceFetchModeEnum): Promise<IFetchedPage> {
+  async fetchPage(url: string, mode: SourceFetchModeEnum, options: IFetchPageOptions = {}): Promise<IFetchedPage> {
     const target = this.parseURL(url);
 
     await this.addressGuardService.assertPublic(target);
@@ -102,7 +104,7 @@ export class CrawlerService {
     let page: IFetchedPage;
 
     try {
-      page = await this.hostThrottleService.run(target.host, async () => fetcher.fetch(target));
+      page = await this.hostThrottleService.run(target.host, async () => fetcher.fetch(target, options.timeoutMs), options.pace);
     } catch (error) {
       if (error instanceof CrawlError) {
         throw error;

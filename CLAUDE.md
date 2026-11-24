@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `6e61309` (vacancy digest from career pages, with its specs)
-> Run `git log 6e61309..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `b012641` (career pages on ATS boards and company discovery)
+> Run `git log b012641..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -84,11 +84,15 @@ pnpm install                           # respects minimumReleaseAge (7 days)
 pnpm db:migrate && pnpm db:migrate:test  # apply migrations to the dev and the test database
 pnpm db:seed                           # reference data and default llm_settings, idempotent; db:seed:dev — demo data
 pnpm cv:import <file> --profile <name> # resume → new version of a profile (PDF); prints the profile, re-matches vacancies
+pnpm sources:add <url> [--name <company>]  # add a career page or an ATS board (any link to it); a board is read once
+pnpm sources:discover [--dry-run]      # find ATS boards by web search, cards to Telegram; --dry-run stores nothing
 pnpm sources:scan [--source <id>] [--force]  # scan career pages now; the running API extracts what was queued
 pnpm vacancies:report [--source <id>]  # every position with its stage and reason — check the filters drop nothing
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
-pnpm dev                               # tsc -b --watch + API with node --watch (Bull Board at BULL_BOARD_PATH)
-pnpm build                             # tsc -b over the project references
+pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
+pnpm api:start                         # build, then the API without watch (the owner's Mac)
+pnpm build                             # tsc -b over the project references — every package and app
+pnpm api:build                         # the API and the packages it uses, with its prompts
 pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
 pnpm lint:fix && pnpm prettier:fix
 pnpm test                              # Vitest unit tests; env from .env.example, never from .env
@@ -114,14 +118,16 @@ Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)     
 - **Hybrid design:** an agent only where the path differs every time (navigating a site, reading an e-mail); everything else is ordinary code. The LLM understands text and extracts data — it **never scores or judges a vacancy**
 - **Both channels converge** into one extraction step and one set of filters
 - **Career pages** are rows of `sources`, fetched by code — `html` or `rendered` (headless Playwright, scrolled); the crawler obeys `robots.txt`, makes one request at a time per site with random pauses, and stops a source on 403 / 429 / captcha (ADR-017). The LLM picks vacancy links by number, code screens them by the profiles' preferences before any extraction (ADR-018)
-- **Browser agent** only for sites whose list answers a form: it drives Playwright once and saves a **recipe**; later runs replay it without an LLM. ATS-hosted boards (Comeet, Greenhouse, Lever) go through their public APIs
+- **ATS boards** (Comeet, Greenhouse, Lever) are `ats` sources read through their public APIs by the same crawler, a shorter pause for an API; country and work mode come from the system, the LLM reads only titles (ADR-021)
+- **Discovery** builds web search queries (Brave) from the profiles, keeps only the board a result URL leads to — results are never stored — and offers a board with fitting positions as a Telegram card; the owner adds or ignores it
+- **Browser agent** only for sites whose list answers a form: it drives Playwright once and saves a **recipe**; later runs replay it without an LLM
 - **Web text is untrusted** (ADR-020): LLM steps that read it have no tools, the text is fenced in the prompt, hidden elements are dropped, fields are clipped, and no request reaches a private address
 - **LinkedIn and Glassdoor are never scraped** — only their Job Alert e-mails are read, and the data comes from the e-mail itself
 - **Matching is code:** one rule per file (`modules/matching/helpers/rules`) against the current resume and `profile_preferences` — languages, place, level, Hebrew, years, excluded companies; verdict `fit` / `almost` / `no_fit` with reasons
-- **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped)
+- **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped) within one country
 - **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
 - **MCP servers** `browser`, `gmail`, `jobs-db`, `notify` are the agents' tools, and the same servers plug into Claude Desktop so the owner can ask about their applications in plain words
-- **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source; buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
+- **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source, a company board from discovery (*Add as a source / Ignore*); buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
 

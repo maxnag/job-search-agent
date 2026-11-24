@@ -4,11 +4,13 @@ import { ConfigService } from '@nestjs/config';
 import { SourceFetchModeEnum, SourceStatusEnum, VacancyStageEnum } from '@job-agent/shared';
 
 import type { IEnv } from '../../../config/env.schema.js';
+import { parseATSBoard } from '../../ats/helpers/a-t-s-board.helper.js';
+import { ATSClientRegistry } from '../../ats/services/a-t-s-client.registry.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
-import type { IFetchedPage } from '../../crawler/interfaces/fetched-page.interface.js';
 import { CrawlerService } from '../../crawler/services/crawler.service.js';
 import { VacancyMatchingService } from '../../matching/services/vacancy-matching.service.js';
+import type { SourceRowType } from '../../search/interfaces/source-row.interface.js';
 import { SourceRepository } from '../../search/repositories/source.repository.js';
 import type { VacancyRowType } from '../../vacancies/interfaces/vacancy-row.interface.js';
 import { VacancyRepository } from '../../vacancies/repositories/vacancy.repository.js';
@@ -58,7 +60,8 @@ const SKIPPING_ERRORS: ReadonlyMap<CrawlErrorCodeEnum, string> = new Map([
 ]);
 
 /**
- * Extracts a vacancy from its page: fetched politely in the mode of its source, reduced to text, hashed — the same
+ * Extracts a vacancy from its page: fetched politely in the mode of its source (a vacancy of an `ats` source from its
+ * posting on the board), reduced to text, hashed — the same
  * text costs no LLM call — extracted, normalized onto the skill dictionary, stored and matched against every
  * profile; new `fit` and `almost` verdicts are handed to the notifications. A page that is gone or says
  * the position is closed closes the vacancy
@@ -74,6 +77,7 @@ export class VacancyExtractionOrchestrator {
 
   /**
    * @param {CrawlerService} crawlerService
+   * @param {ATSClientRegistry} atsClientRegistry
    * @param {VacancyExtractionService} vacancyExtractionService
    * @param {VacancyMatchingService} vacancyMatchingService
    * @param {PipelineEventsService} pipelineEventsService
@@ -83,6 +87,7 @@ export class VacancyExtractionOrchestrator {
    */
   constructor(
     private readonly crawlerService: CrawlerService,
+    private readonly atsClientRegistry: ATSClientRegistry,
     private readonly vacancyExtractionService: VacancyExtractionService,
     private readonly vacancyMatchingService: VacancyMatchingService,
     private readonly pipelineEventsService: PipelineEventsService,
@@ -121,26 +126,27 @@ export class VacancyExtractionOrchestrator {
       return { vacancyId, outcome: page.outcome };
     }
 
-    return this.processPage(vacancy, page.page);
+    return this.processPage(vacancy, page.html);
   }
 
   /**
-   * Fetch the vacancy page in the mode of its source; a page that is gone closes the vacancy, a page robots.txt
-   * forbids skips it, a refusal of the site stops the source
+   * Fetch the vacancy in the way of its source — its page, or its posting on the board of an `ats` source; a vacancy
+   * that is gone is closed, a page robots.txt forbids is skipped, a refusal of the site stops the source
    *
    * @param {VacancyRowType} vacancy
    *
    * @throws {CrawlError} For a transient failure, or after the source is stopped
+   * @throws {Error} `ATS_POSTING_UNKNOWN` or `ATS_RESPONSE_INVALID` for a vacancy of an `ats` source
    *
-   * @returns {Promise<{ page: IFetchedPage; outcome?: undefined } | { outcome: VacancyExtractionOutcomeEnum }>}
+   * @returns {Promise<{ html: string; outcome?: undefined } | { outcome: VacancyExtractionOutcomeEnum }>}
    */
   private async fetchVacancy(
     vacancy: VacancyRowType
-  ): Promise<{ page: IFetchedPage; outcome?: undefined } | { outcome: VacancyExtractionOutcomeEnum }> {
+  ): Promise<{ html: string; outcome?: undefined } | { outcome: VacancyExtractionOutcomeEnum }> {
     const source = await this.sourceRepository.findOne(vacancy.source_id);
 
     try {
-      return { page: await this.crawlerService.fetchPage(vacancy.vacancy_url, source?.source_fetch_mode ?? SOURCE_FALLBACK_MODE) };
+      return { html: await this.loadVacancy(vacancy, source) };
     } catch (error) {
       if (!(error instanceof CrawlError)) {
         throw error;
@@ -173,16 +179,49 @@ export class VacancyExtractionOrchestrator {
   }
 
   /**
-   * Extract and store the text of a fetched page, unless it has not changed
+   * The HTML of a vacancy: the posting from the board of an `ats` source, the page fetched in the mode of the source
+   * otherwise
    *
    * @param {VacancyRowType} vacancy
-   * @param {IFetchedPage} page
+   * @param {SourceRowType | undefined} source
+   *
+   * @throws {CrawlError} If the page or the posting was not fetched
+   * @throws {Error} `ATS_POSTING_UNKNOWN` if the source URL is not a board or the vacancy has no position id
+   * @throws {Error} `ATS_RESPONSE_INVALID` if the posting does not match its schema
+   *
+   * @returns {Promise<string>}
+   */
+  private async loadVacancy(vacancy: VacancyRowType, source: SourceRowType | undefined): Promise<string> {
+    if (source?.source_fetch_mode !== SourceFetchModeEnum.ATS) {
+      const page = await this.crawlerService.fetchPage(vacancy.vacancy_url, source?.source_fetch_mode ?? SOURCE_FALLBACK_MODE);
+
+      return page.html;
+    }
+
+    const board = parseATSBoard(source.source_url);
+
+    if (!board || !vacancy.vacancy_external_id) {
+      throw new Error(`ATS_POSTING_UNKNOWN: vacancy ${vacancy.vacancy_id} of source ${source.source_id} has no board or position id`);
+    }
+
+    return this.atsClientRegistry.findOne(board.kind).fetchPosting({
+      board: board.board,
+      externalId: vacancy.vacancy_external_id,
+      url: vacancy.vacancy_url
+    });
+  }
+
+  /**
+   * Extract and store the text of a fetched vacancy, unless it has not changed
+   *
+   * @param {VacancyRowType} vacancy
+   * @param {string} html
    *
    * @returns {Promise<IVacancyExtractionSummary>}
    */
-  private async processPage(vacancy: VacancyRowType, page: IFetchedPage): Promise<IVacancyExtractionSummary> {
+  private async processPage(vacancy: VacancyRowType, html: string): Promise<IVacancyExtractionSummary> {
     const vacancyId = vacancy.vacancy_id;
-    const text = vacancyPageText(page.html, this.configService.get('VACANCY_TEXT_MAX_CHARS', { infer: true }));
+    const text = vacancyPageText(html, this.configService.get('VACANCY_TEXT_MAX_CHARS', { infer: true }));
     const hash = textHash(text);
     const wasExtracted = vacancy.vacancy_data !== null;
 

@@ -4,6 +4,8 @@ import { type Job, UnrecoverableError } from 'bullmq';
 
 import { JobNameEnum } from '@job-agent/shared';
 
+import type { IDiscoverySummary } from '../../discovery/interfaces/discovery-summary.interface.js';
+import { DiscoveryOrchestrator } from '../../discovery/services/discovery.orchestrator.js';
 import { toJobError } from '../../queues/helpers/job-error.helper.js';
 import { logJobFailure } from '../../queues/helpers/job-failure.helper.js';
 import type { IScanSourceJob } from '../interfaces/scan-source-job.interface.js';
@@ -11,7 +13,8 @@ import type { ISourceScanSummary } from '../interfaces/source-scan-summary.inter
 import { SourceScanOrchestrator } from '../services/source-scan.orchestrator.js';
 
 /**
- * Worker of the `search` queue, one job at a time: the schedule's fan-out and the scan of each source
+ * Worker of the `search` queue, one job at a time: the schedule's fan-out, the scan of each source and the discovery
+ * of company boards
  */
 @Processor('search', { concurrency: 1 })
 export class SearchConsumer extends WorkerHost {
@@ -24,8 +27,12 @@ export class SearchConsumer extends WorkerHost {
 
   /**
    * @param {SourceScanOrchestrator} sourceScanOrchestrator
+   * @param {DiscoveryOrchestrator} discoveryOrchestrator
    */
-  constructor(private readonly sourceScanOrchestrator: SourceScanOrchestrator) {
+  constructor(
+    private readonly sourceScanOrchestrator: SourceScanOrchestrator,
+    private readonly discoveryOrchestrator: DiscoveryOrchestrator
+  ) {
     super();
   }
 
@@ -37,9 +44,9 @@ export class SearchConsumer extends WorkerHost {
    * @throws {UnrecoverableError} For an unknown job or a permanent failure — no retry
    * @throws {Error} For a transient failure — retried with backoff
    *
-   * @returns {Promise<ISourceScanSummary | number>}
+   * @returns {Promise<ISourceScanSummary | IDiscoverySummary | number>}
    */
-  async process(job: Job<IScanSourceJob, unknown, JobNameEnum>): Promise<ISourceScanSummary | number> {
+  async process(job: Job<IScanSourceJob, unknown, JobNameEnum>): Promise<ISourceScanSummary | IDiscoverySummary | number> {
     try {
       if (job.name === JobNameEnum.SCAN_SOURCES) {
         return await this.sourceScanOrchestrator.queueScans();
@@ -47,6 +54,10 @@ export class SearchConsumer extends WorkerHost {
 
       if (job.name === JobNameEnum.SCAN_SOURCE) {
         return await this.sourceScanOrchestrator.scan(job.data);
+      }
+
+      if (job.name === JobNameEnum.DISCOVER_SOURCES) {
+        return await this.discoveryOrchestrator.discover(false);
       }
     } catch (error) {
       throw toJobError(error);

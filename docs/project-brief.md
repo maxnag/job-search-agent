@@ -15,8 +15,9 @@ Telegram cards. **The decision "fits / does not fit" belongs to the human, not t
 
 1. **The resume** — `pnpm cv:import <file> --profile <name>`. The LLM extracts skills (with a kind and years),
    experience and spoken languages; the latest version of a profile's resume is the source of truth for matching
-2. **Vacancies** — from career pages (rows of `sources`, added by hand, filters may sit in the URL) and from job-alert
-   e-mails, extracted into the same fields and compared with the profile by code
+2. **Vacancies** — from career pages and ATS boards (rows of `sources`: added with `pnpm sources:add`, or proposed by
+   the discovery and added by the owner's press; filters may sit in the URL) and from job-alert e-mails, extracted into
+   the same fields and compared with the profile by code
 
 ## Architecture
 
@@ -44,14 +45,27 @@ with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops t
 
 `pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason.
 
+### ATS boards and discovery
+
+A board on Comeet, Greenhouse or Lever is a source of mode `ats` (ADR-021). Its positions come from the system's
+public API in one request, through the same polite crawler with a shorter pause for an API. The `listing` step reads
+only the titles; country, city and work mode come from the system, and a position in a country no profile searches
+is dropped before the LLM. The text of a vacancy comes from the posting API; a posting that is gone closes it.
+
+Discovery finds new boards: code builds web search queries from the profiles (Brave Search API,
+`site:<board domain> <country> "<role>"`), keeps only the board each result URL leads to, lists the new boards
+through their APIs and stores what the systems answered in `source_candidates`. A board with fitting positions
+becomes a Telegram card — *Add as a source* or *Ignore*; the owner decides. Search results are never stored.
+`pnpm sources:discover [--dry-run]` runs it by hand; it also runs weekly on `DISCOVER_CRON`.
+
 ### Browser agent for search forms
 
 For sites whose list comes only as the answer to a form. The LLM drives Playwright once per site; afterwards code
 replays the saved **recipe** without an LLM.
 
 1. **Open** the career page in headless Chromium
-2. **Detect the type:** a vacancy list → step 4; a search form (location, department, keywords) → step 3;
-   an embedded ATS (Comeet, Greenhouse, Lever) → take vacancies through its public API
+2. **Detect the type:** a vacancy list → step 4; a search form (location, department, keywords) → step 3.
+   An ATS board is not the agent's work — it is an `ats` source (ADR-021)
 3. **Fill the filters:** the agent gets a simplified page snapshot (labelled elements) and calls `select`,
    `click`, `type`, `scroll`. Values come from config (locations `Israel, Tel Aviv, Remote`, departments
    `R&D, Engineering, Development`); the agent picks the closest options
@@ -81,7 +95,8 @@ nice to have, frameworks, years required, Hebrew (required / advantage / none), 
 the same dictionary as the resume. Stored as JSONB with the hash of the page text — an unchanged page is not read
 again. Web text is untrusted (ADR-020).
 
-**Dedup:** by URL, and by the normalized pair "company + title" (lowercase, without Ltd/Inc).
+**Dedup:** by URL, and by the normalized pair "company + title" (lowercase, without Ltd/Inc) within one country —
+the same title of a company in two countries is two vacancies; a position of unknown country joins either.
 
 **Matching is code, no LLM** — one rule per file against the current resume and the preferences of each profile
 (`profile_preferences`): a required programming language the resume has, place and work mode, level, excluded
@@ -90,7 +105,8 @@ The worst finding decides: `fit` / `almost` / `no_fit`, each with its reasons. A
 extracted vacancy without the LLM.
 
 **Telegram cards, on events:** a `fit` or `almost` vacancy at once, with buttons *Interested*, *Skip*, *Applied*;
-a closed or changed vacancy the owner already saw; a stopped source. `no_fit` is never sent. Presses are stored and
+a closed or changed vacancy the owner already saw; a stopped source; a company board the discovery found, with
+*Add as a source* / *Ignore*. `no_fit` is never sent. Presses are stored and
 used to tune the rules. The owner sends the CV themselves.
 
 ### Queues (BullMQ)
@@ -100,7 +116,7 @@ failure, and jobs that must survive the Mac's sleep.
 
 | Queue | Does | Specifics |
 |---|---|---|
-| `search` | scan a source → screened positions | Job Scheduler every `SEARCH_INTERVAL_HOURS` + jitter, `concurrency: 1`, one request at a time per site |
+| `search` | scan a source → screened positions; discovery of boards | Job Schedulers: scans every `SEARCH_INTERVAL_HOURS` + jitter, discovery on `DISCOVER_CRON`; `concurrency: 1`, one request at a time per site |
 | `email` | read an e-mail → links or a status | schedule every 30 minutes |
 | `extract` | open a vacancy → JSON → match → save | `EXTRACT_CONCURRENCY` (`1` for Ollama), retries with growing backoff |
 | `notify` | cards and notices to Telegram | `concurrency: 1`, one message a second; sweep of unsent cards every `NOTIFY_SWEEP_MINUTES` |

@@ -78,6 +78,8 @@ export const envSchema = z
     HTTP_TIMEOUT_MS: positiveInt().default(20000),
     CRAWL_DELAY_MIN_MS: positiveInt().default(3000),
     CRAWL_DELAY_MAX_MS: positiveInt().default(9000),
+    CRAWL_API_DELAY_MIN_MS: positiveInt().default(1000),
+    CRAWL_API_DELAY_MAX_MS: positiveInt().default(2000),
     ROBOTS_CACHE_TTL_MS: positiveInt().default(86400000),
 
     RENDER_BROWSER_CHANNEL: z.preprocess(emptyToUndefined, z.enum(BrowserChannelEnum).optional()),
@@ -88,6 +90,7 @@ export const envSchema = z
     SEARCH_INTERVAL_HOURS: positiveInt().default(3),
     SEARCH_JITTER_MINUTES: z.coerce.number().int().nonnegative().default(30),
     LISTING_MAX_LINKS: positiveInt().default(500),
+    LISTING_BATCH_SIZE: positiveInt().default(100),
     VACANCY_RECHECK_HOURS: positiveInt().default(24),
     VACANCY_TEXT_MAX_CHARS: positiveInt().default(30000),
 
@@ -105,7 +108,14 @@ export const envSchema = z
         .regex(/^-?\d+$/)
         .optional()
     ),
-    NOTIFY_SWEEP_MINUTES: positiveInt().default(5)
+    NOTIFY_SWEEP_MINUTES: positiveInt().default(5),
+
+    BRAVE_SEARCH_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    DISCOVER_MAX_QUERIES: positiveInt().default(40),
+    DISCOVER_CRON: z.preprocess(emptyToUndefined, z.string().min(1).default('0 9 * * 1')),
+    DISCOVER_RECHECK_DAYS: positiveInt().default(30),
+    DISCOVER_BOARD_TIMEOUT_MS: positiveInt().default(10000),
+    DISCOVER_MAX_CARDS: positiveInt().default(10)
   })
   .superRefine((env, context) => {
     const key = LLM_PROVIDER_REQUIRED_KEYS[env.LLM_PROVIDER];
@@ -120,6 +130,10 @@ export const envSchema = z
 
     if (env.CRAWL_DELAY_MIN_MS > env.CRAWL_DELAY_MAX_MS) {
       context.addIssue({ code: 'custom', path: ['CRAWL_DELAY_MAX_MS'], message: 'must not be less than CRAWL_DELAY_MIN_MS' });
+    }
+
+    if (env.CRAWL_API_DELAY_MIN_MS > env.CRAWL_API_DELAY_MAX_MS) {
+      context.addIssue({ code: 'custom', path: ['CRAWL_API_DELAY_MAX_MS'], message: 'must not be less than CRAWL_API_DELAY_MIN_MS' });
     }
   });
 

@@ -3,9 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { HebrewRequirementEnum, SourceFetchModeEnum, SourceStatusEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
+import {
+  ATSKindEnum,
+  HebrewRequirementEnum,
+  SourceFetchModeEnum,
+  SourceStatusEnum,
+  VacancyStageEnum,
+  WorkModeEnum
+} from '@job-agent/shared';
 
 import { createConfigMock } from '../../../../test/config-service.mock.js';
+import type { IATSClient } from '../../ats/interfaces/a-t-s-client.interface.js';
+import { ATSClientRegistry } from '../../ats/services/a-t-s-client.registry.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
 import { CrawlerService } from '../../crawler/services/crawler.service.js';
@@ -56,6 +65,8 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
   let events: DeepMocked<PipelineEventsService>;
   let vacancies: DeepMocked<VacancyRepository>;
   let sources: DeepMocked<SourceRepository>;
+  let registry: DeepMocked<ATSClientRegistry>;
+  let atsClient: DeepMocked<IATSClient>;
 
   beforeEach(async () => {
     crawler = createMock<CrawlerService>();
@@ -64,6 +75,9 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
     events = createMock<PipelineEventsService>();
     vacancies = createMock<VacancyRepository>();
     sources = createMock<SourceRepository>();
+    registry = createMock<ATSClientRegistry>();
+    atsClient = createMock<IATSClient>();
+    registry.findOne.mockReturnValue(atsClient);
     vacancies.findOne.mockResolvedValue(VACANCY);
     sources.findOne.mockResolvedValue({ source_fetch_mode: SourceFetchModeEnum.RENDERED } as SourceRowType);
     crawler.fetchPage.mockResolvedValue({
@@ -78,6 +92,7 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
       providers: [
         VacancyExtractionOrchestrator,
         { provide: CrawlerService, useValue: crawler },
+        { provide: ATSClientRegistry, useValue: registry },
         { provide: VacancyExtractionService, useValue: extraction },
         { provide: VacancyMatchingService, useValue: matching },
         { provide: PipelineEventsService, useValue: events },
@@ -222,5 +237,49 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
 
     await expect(subjectUnderTest.extract(7)).rejects.toThrow('LLM_OUTPUT_SCHEMA_INVALID');
     expect(vacancies.update).not.toHaveBeenCalled();
+  });
+
+  describe('a vacancy of an applicant tracking system board', () => {
+    const ATS_SOURCE = {
+      source_id: 1,
+      source_url: 'https://jobs.lever.co/Contoso',
+      source_fetch_mode: SourceFetchModeEnum.ATS
+    } as SourceRowType;
+
+    beforeEach(() => {
+      sources.findOne.mockResolvedValue(ATS_SOURCE);
+      vacancies.findOne.mockResolvedValue({ ...VACANCY, vacancy_url: 'https://jobs.lever.co/Contoso/a1', vacancy_external_id: 'a1' });
+      atsClient.fetchPosting.mockResolvedValue('<main><p>Backend Developer</p><p>TypeScript required</p></main>');
+    });
+
+    it('reads the posting from the board API instead of the page', async () => {
+      await expect(subjectUnderTest.extract(7)).resolves.toEqual({ vacancyId: 7, outcome: VacancyExtractionOutcomeEnum.EXTRACTED });
+
+      expect(registry.findOne).toHaveBeenCalledWith(ATSKindEnum.LEVER);
+      expect(atsClient.fetchPosting).toHaveBeenCalledWith({ board: 'Contoso', externalId: 'a1', url: 'https://jobs.lever.co/Contoso/a1' });
+      expect(crawler.fetchPage).not.toHaveBeenCalled();
+      expect(extraction.extract).toHaveBeenCalledWith(PAGE_TEXT);
+    });
+
+    it('closes a vacancy whose posting is gone from the board', async () => {
+      atsClient.fetchPosting.mockRejectedValue(new CrawlError(CrawlErrorCodeEnum.FETCH_HTTP_ERROR, 'api.lever.co: HTTP 404'));
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.CLOSED });
+      expect(vacancies.close).toHaveBeenCalledWith(7);
+    });
+
+    it('throws ATS_POSTING_UNKNOWN for a vacancy without a position id', async () => {
+      vacancies.findOne.mockResolvedValue({ ...VACANCY, vacancy_external_id: null });
+
+      await expect(subjectUnderTest.extract(7)).rejects.toThrow('ATS_POSTING_UNKNOWN: vacancy 7 of source 1');
+      expect(atsClient.fetchPosting).not.toHaveBeenCalled();
+    });
+
+    it('throws ATS_POSTING_UNKNOWN when the source link is not a board', async () => {
+      sources.findOne.mockResolvedValue({ ...ATS_SOURCE, source_url: 'https://careers.example.com/jobs' });
+
+      await expect(subjectUnderTest.extract(7)).rejects.toThrow('ATS_POSTING_UNKNOWN');
+      expect(registry.findOne).not.toHaveBeenCalled();
+    });
   });
 });

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SourceFetchModeEnum } from '@job-agent/shared';
 
 import { CrawlErrorCodeEnum } from '../enums/crawl-error-code.enum.js';
+import { CrawlPaceEnum } from '../enums/crawl-pace.enum.js';
 import { CrawlError } from '../errors/crawl.error.js';
 import type { IFetchedPage } from '../interfaces/fetched-page.interface.js';
 import type { IPageFetcher } from '../interfaces/page-fetcher.interface.js';
@@ -128,6 +129,20 @@ describe('CrawlerService (unit)', () => {
     fetcher.fetch.mockRejectedValue(refusal);
 
     await expect(subjectUnderTest.fetchPage(URL_JOBS, SourceFetchModeEnum.HTML)).rejects.toBe(refusal);
+  });
+
+  it('passes the time limit to the fetcher and the pace to the host queue', async () => {
+    await subjectUnderTest.fetchPage(URL_JOBS, SourceFetchModeEnum.HTML, { timeoutMs: 4000, pace: CrawlPaceEnum.API });
+
+    expect(throttle.run).toHaveBeenCalledWith('careers.example.com', expect.any(Function), CrawlPaceEnum.API);
+    expect(fetcher.fetch).toHaveBeenCalledWith(new URL(URL_JOBS), 4000);
+  });
+
+  it('leaves the pace and the time limit to their defaults without options', async () => {
+    await subjectUnderTest.fetchPage(URL_JOBS, SourceFetchModeEnum.HTML);
+
+    expect(throttle.run).toHaveBeenCalledWith('careers.example.com', expect.any(Function), undefined);
+    expect(fetcher.fetch).toHaveBeenCalledWith(new URL(URL_JOBS), undefined);
   });
 
   it('checks the address and robots.txt of the site a redirect landed on', async () => {

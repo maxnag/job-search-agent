@@ -3,9 +3,12 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createConfigMock } from '../../../../test/config-service.mock.js';
+import { CrawlPaceEnum } from '../enums/crawl-pace.enum.js';
 import { HostThrottleService } from './host-throttle.service.js';
 
 const PAUSE_MS = 60;
+
+const API_PAUSE_MS = 15;
 
 describe('HostThrottleService (unit)', () => {
   let moduleFixture: TestingModule;
@@ -15,7 +18,15 @@ describe('HostThrottleService (unit)', () => {
     moduleFixture = await Test.createTestingModule({
       providers: [
         HostThrottleService,
-        { provide: ConfigService, useValue: createConfigMock({ CRAWL_DELAY_MIN_MS: PAUSE_MS, CRAWL_DELAY_MAX_MS: PAUSE_MS }) }
+        {
+          provide: ConfigService,
+          useValue: createConfigMock({
+            CRAWL_DELAY_MIN_MS: PAUSE_MS,
+            CRAWL_DELAY_MAX_MS: PAUSE_MS,
+            CRAWL_API_DELAY_MIN_MS: API_PAUSE_MS,
+            CRAWL_API_DELAY_MAX_MS: API_PAUSE_MS
+          })
+        }
       ]
     }).compile();
 
@@ -70,5 +81,28 @@ describe('HostThrottleService (unit)', () => {
 
     await expect(failed).rejects.toThrow('timeout');
     await expect(next).resolves.toBe('next');
+  });
+
+  it('waits the short pause of the API pace before a request to a job-board API', async () => {
+    await subjectUnderTest.run('api.example.com', () => Promise.resolve(), CrawlPaceEnum.API);
+
+    const startedAt = Date.now();
+
+    await subjectUnderTest.run('api.example.com', () => Promise.resolve(), CrawlPaceEnum.API);
+
+    const waited = Date.now() - startedAt;
+
+    expect(waited).toBeGreaterThanOrEqual(API_PAUSE_MS - 5);
+    expect(waited).toBeLessThan(PAUSE_MS);
+  });
+
+  it('keeps the long pause of the site pace when no pace is given', async () => {
+    await subjectUnderTest.run('a.example.com', () => Promise.resolve(), CrawlPaceEnum.API);
+
+    const startedAt = Date.now();
+
+    await subjectUnderTest.run('a.example.com', () => Promise.resolve());
+
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(PAUSE_MS - 5);
   });
 });

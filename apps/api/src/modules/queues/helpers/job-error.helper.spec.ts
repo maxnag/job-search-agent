@@ -22,12 +22,26 @@ describe('toJobError', () => {
     }
   );
 
-  it.each(['LLM_OUTPUT_SCHEMA_INVALID', 'LLM_OUTPUT_TRUNCATED', 'PROFILE_PREFERENCES_INVALID', 'SOURCE_NOT_FOUND', 'VACANCY_NOT_FOUND'])(
-    'stops the retries of a %s error',
-    code => {
-      expect(toJobError(new Error(`${code}: details`))).toBeInstanceOf(UnrecoverableError);
-    }
-  );
+  it.each([
+    'ATS_POSTING_UNKNOWN',
+    'ATS_RESPONSE_INVALID',
+    'BRAVE_SEARCH_DISABLED',
+    'BRAVE_SEARCH_UNAUTHORIZED',
+    'LLM_OUTPUT_SCHEMA_INVALID',
+    'LLM_OUTPUT_TRUNCATED',
+    'PROFILE_PREFERENCES_INVALID',
+    'SOURCE_NOT_FOUND',
+    'SOURCE_URL_NOT_ATS',
+    'VACANCY_NOT_FOUND'
+  ])('stops the retries of a %s error', code => {
+    expect(toJobError(new Error(`${code}: details`))).toBeInstanceOf(UnrecoverableError);
+  });
+
+  it.each(['BRAVE_SEARCH_RATE_LIMITED', 'BRAVE_SEARCH_FAILED'])('keeps a %s error retryable — the quota and the network recover', code => {
+    const error = new Error(`${code}: HTTP 429`);
+
+    expect(toJobError(error)).toBe(error);
+  });
 
   it('keeps any other error retryable, a code only mentioned inside the message too', () => {
     const error = new Error('Ollama busy, not VACANCY_NOT_FOUND: x');
