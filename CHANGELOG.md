@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/maxnag/job-search-agent/compare/v0.5.0...v0.5.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **api:** an incomplete listing closes no vacancies ([#16](https://github.com/maxnag/job-search-agent/issues/16)) ([af8cd09](https://github.com/maxnag/job-search-agent/commit/af8cd09cd793feb175720917ddfa1f03c07d8bd9))
+
 ## [0.5.0](https://github.com/maxnag/job-search-agent/compare/v0.4.0...v0.5.0) (2026-11-24)
 
 
