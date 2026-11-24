@@ -440,3 +440,44 @@ such company by hand.
   `sources:add` or a career page source
 - (−) The candidate count may be large; cards come in batches as the owner decides the open ones
 
+
+## ADR-022: Job-alert e-mails over IMAP, the kind told from the headers
+
+**Status:** Accepted
+
+**Context:** LinkedIn, Glassdoor and the job boards that may not be crawled reach the owner only as job-alert e-mails,
+and many companies send their own alerts. The mailbox is personal: most e-mails are not about work, and a recruiter's
+letter is private. The owner reads mail in Gmail today, but may move to another provider.
+
+**Decision:**
+- **A port with one adapter per provider:** `IJobMailProvider` opens a mailbox, `IJobMailbox` lists the headers of a
+  window and fetches one message; `JOB_MAIL_PROVIDER` picks the adapter. The first one is IMAP with a Gmail app
+  password (`JOB_MAIL_IMAP_*`) — no OAuth client and no Google project
+- **Read-only is enforced by code:** the folder is opened with `EXAMINE`, a message is fetched with `BODY.PEEK`, and
+  the adapter has no command that stores flags, moves, deletes or sends. An e-mail stays unread if it was unread
+- **A window, never the history:** each run looks at the last `JOB_MAIL_LOOKBACK_HOURS` (at most
+  `JOB_MAIL_MAX_MESSAGES` e-mails), every `JOB_MAIL_INTERVAL_MINUTES` on the `email` queue. Every e-mail looked at is
+  a row of `job_mail_messages`, keyed by its `Message-ID` header — the same key whatever the provider — so no e-mail
+  is classified or read twice
+- **The kind is told by the LLM from the headers only** — sender name, sender domain and subject, fenced as data
+  (ADR-020): `job_alert`, `recruiter` or `other`; an e-mail the answer leaves out counts as a job alert. A list of
+  senders would miss every new mailing. **Only a job alert has its body fetched;** the body of any other e-mail is never
+  read, so a private letter never reaches a cloud LLM
+- **A job alert is read like a listing:** its links are unwrapped from redirects, cleaned of tracking and service
+  links; the `listing` step picks the vacancies by number and code screens them by the profiles (ADR-018). An alert is
+  never the whole list, so it **closes nothing**. The sender domain becomes a source (`source_fetch_mode = 'job_mail'`,
+  `mailto:@<domain>`) that the scanner never fetches; switching it off ignores its next alerts
+- **LinkedIn and Glassdoor links are never opened** (ADR-003): a link rule per site keeps the canonical vacancy link
+  and marks it not to be fetched. Its description is looked up on the company's ATS board (Comeet, Greenhouse, Lever)
+  by a Brave query `site:<board> "<company>"`; the same title of the same company in the same country is that vacancy,
+  and its posting is read through the board API (`vacancy_text_url`). Not found — the vacancy stays `listed` without a
+  card, and the search is repeated after `JOB_MAIL_TEXT_RECHECK_DAYS`, at most `JOB_MAIL_TEXT_MAX_SEARCHES` times
+- **A refused password stops the reading:** the schedule is removed until the API restarts and one Telegram notice
+  says so; a lost connection is retried like any transient failure
+
+**Consequences:**
+- (+) Any mailing works without configuration, and the owner's private mail stays out of the cloud
+- (+) Another provider is one adapter; the rest of the pipeline is the one of the career pages
+- (+) A LinkedIn vacancy becomes a full card only from the company's own posting — nothing is scraped
+- (−) A vacancy of a company without a public ATS board, seen only on LinkedIn, never gets a card
+- (−) An app password grants the whole mailbox to whoever holds it; it lives only in `.env` on the owner's machine

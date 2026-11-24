@@ -17,7 +17,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Resume parsing | `unpdf` (PDF text layer) | 2.2.1 | host |
 | LLM | Anthropic SDK / Ollama client | 1.8.0 / 0.6.4 | API / host (Mac) |
 | Browser | Playwright (Chromium), cheerio | 1.65.1, 1.2.0 | host |
-| Mail | `googleapis` (Gmail, read-only) | 190.0.0 | API |
+| Mail | `imapflow` (IMAP, read-only by code), `mailparser` (MIME) | 2.12.1, 3.14.5 | host |
 | Telegram | grammY | 1.46.0 | API |
 | Command output | `cli-table3` (tables), `util.styleText` of Node (colours) | 0.6.5 | host |
 | Command line | `util.parseArgs` of Node as a lexer; `parseCLI` builds the parsing, help and "Did you mean" from one `ICLISpec` | — | host |
@@ -101,3 +101,11 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `DISCOVER_RECHECK_DAYS` | a board with no fitting position is checked again after this many days |
 | `DISCOVER_BOARD_TIMEOUT_MS` | limit of reading one board during the discovery |
 | `DISCOVER_MAX_CARDS` | most board cards waiting for the owner's decision at once |
+| `JOB_MAIL_PROVIDER` | adapter of the mailbox: `imap` |
+| `JOB_MAIL_IMAP_HOST`, `JOB_MAIL_IMAP_PORT`, `JOB_MAIL_IMAP_MAILBOX` | IMAP server over TLS and the folder read (`imap.gmail.com`, `993`, `INBOX`) |
+| `JOB_MAIL_IMAP_USER`, `JOB_MAIL_IMAP_PASSWORD` | the mailbox and its app password (Gmail: 2-Step Verification on, then an app password); either empty — no mail reading, the API runs without it |
+| `JOB_MAIL_LOOKBACK_HOURS`, `JOB_MAIL_MAX_MESSAGES` | window of one reading and most e-mails it looks at |
+| `JOB_MAIL_INTERVAL_MINUTES` | how often the mailbox is read |
+| `JOB_MAIL_TRIAGE_BATCH_SIZE` | most e-mail headers in one LLM request |
+| `JOB_MAIL_TIMEOUT_MS` | connection, greeting and socket timeout of IMAP |
+| `JOB_MAIL_TEXT_RECHECK_DAYS`, `JOB_MAIL_TEXT_MAX_SEARCHES` | a LinkedIn / Glassdoor vacancy without a description is looked up on ATS boards again after this many days, at most this many times |
