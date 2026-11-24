@@ -2,7 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { truncateTables } from '@job-agent/db';
-import { SourceStatusEnum } from '@job-agent/shared';
+import { SourceFetchModeEnum, SourceStatusEnum } from '@job-agent/shared';
 
 import { testDatabaseProvider } from '../../../../test/test-database.provider.js';
 import { PIPELINE_TABLES, insertSource } from '../../../../test/vacancy-fixtures.js';
@@ -42,6 +42,7 @@ describe('SourceRepository (e2e)', () => {
     await insertSource(database, { source_is_active: false });
     await insertSource(database, { source_status: SourceStatusEnum.BLOCKED });
     await insertSource(database, { source_status: SourceStatusEnum.BLOCKED_BY_ROBOTS });
+    await insertSource(database, { source_url: 'mailto:@jobs.example.com', source_fetch_mode: SourceFetchModeEnum.JOB_MAIL });
 
     expect((await repository.findScannable()).map(source => source.source_id)).toEqual([first.source_id, second.source_id]);
   });
@@ -51,6 +52,7 @@ describe('SourceRepository (e2e)', () => {
     const blocked = await insertSource(database, { source_status: SourceStatusEnum.BLOCKED });
 
     await insertSource(database, { source_is_active: false });
+    await insertSource(database, { source_url: 'mailto:@jobs.example.com', source_fetch_mode: SourceFetchModeEnum.JOB_MAIL });
 
     expect((await repository.findActive()).map(source => source.source_id)).toEqual([ok.source_id, blocked.source_id]);
   });

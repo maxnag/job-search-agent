@@ -170,6 +170,11 @@ describe('NotificationService (unit)', () => {
       expect(telegram.send).toHaveBeenCalledWith(expect.stringMatching(/^⛔ Source stopped/));
     });
 
+    it('sends the notice of a mailbox that refused the password', async () => {
+      await expect(subjectUnderTest.sendJobMailDisabled()).resolves.toBe(true);
+      expect(telegram.send).toHaveBeenCalledWith(expect.stringMatching(/^📭 Job mail is off/));
+    });
+
     it('sends nothing for a vacancy or source that is gone', async () => {
       notifications.findVacancyNotice.mockResolvedValue(undefined);
       notifications.findSourceNotice.mockResolvedValue(undefined);
@@ -235,6 +240,7 @@ describe('NotificationService (unit)', () => {
       await expect(subjectUnderTest.sendChanged(7)).resolves.toBe(false);
       await expect(subjectUnderTest.sendSourceBlocked(1)).resolves.toBe(false);
       await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(false);
+      await expect(subjectUnderTest.sendJobMailDisabled()).resolves.toBe(false);
       await expect(subjectUnderTest.queuePending()).resolves.toBe(0);
       expect(candidates.findOne).not.toHaveBeenCalled();
       expect(notifications.findMatchCard).not.toHaveBeenCalled();

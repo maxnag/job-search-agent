@@ -68,6 +68,7 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
   let sources: DeepMocked<SourceRepository>;
   let registry: DeepMocked<ATSClientRegistry>;
   let atsClient: DeepMocked<IATSClient>;
+  let postings: DeepMocked<CompanyPostingService>;
 
   beforeEach(async () => {
     crawler = createMock<CrawlerService>();
@@ -78,6 +79,8 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
     sources = createMock<SourceRepository>();
     registry = createMock<ATSClientRegistry>();
     atsClient = createMock<IATSClient>();
+    postings = createMock<CompanyPostingService>();
+    postings.isEnabled.mockReturnValue(true);
     registry.findOne.mockReturnValue(atsClient);
     vacancies.findOne.mockResolvedValue(VACANCY);
     sources.findOne.mockResolvedValue({ source_fetch_mode: SourceFetchModeEnum.RENDERED } as SourceRowType);
@@ -94,13 +97,16 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
         VacancyExtractionOrchestrator,
         { provide: CrawlerService, useValue: crawler },
         { provide: ATSClientRegistry, useValue: registry },
-        { provide: CompanyPostingService, useValue: createMock<CompanyPostingService>() },
+        { provide: CompanyPostingService, useValue: postings },
         { provide: VacancyExtractionService, useValue: extraction },
         { provide: VacancyMatchingService, useValue: matching },
         { provide: PipelineEventsService, useValue: events },
         { provide: VacancyRepository, useValue: vacancies },
         { provide: SourceRepository, useValue: sources },
-        { provide: ConfigService, useValue: createConfigMock({ VACANCY_TEXT_MAX_CHARS: 12_000 }) }
+        {
+          provide: ConfigService,
+          useValue: createConfigMock({ VACANCY_TEXT_MAX_CHARS: 12_000, JOB_MAIL_TEXT_RECHECK_DAYS: 7, JOB_MAIL_TEXT_MAX_SEARCHES: 3 })
+        }
       ]
     }).compile();
 
@@ -282,6 +288,143 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
 
       await expect(subjectUnderTest.extract(7)).rejects.toThrow('ATS_POSTING_UNKNOWN');
       expect(registry.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a vacancy of a job alert', () => {
+    const NO_TEXT_REASON = 'no description yet: the vacancy is not on a board of its company (Comeet, Greenhouse, Lever)';
+
+    const JOB_MAIL_SOURCE = {
+      source_id: 25,
+      source_url: 'mailto:@jobs.example.com',
+      source_fetch_mode: SourceFetchModeEnum.JOB_MAIL
+    } as SourceRowType;
+
+    const LINKEDIN_VACANCY = {
+      ...VACANCY,
+      source_id: 25,
+      vacancy_url: 'https://www.linkedin.com/jobs/view/4100000001/',
+      vacancy_company: 'Northwind',
+      vacancy_text_url: null,
+      vacancy_text_searched_at: null,
+      vacancy_text_searches: 0
+    } as VacancyRowType;
+
+    beforeEach(() => {
+      sources.findOne.mockResolvedValue(JOB_MAIL_SOURCE);
+      vacancies.findOne.mockResolvedValue(LINKEDIN_VACANCY);
+      atsClient.fetchPosting.mockResolvedValue('<main><p>Backend Developer</p><p>TypeScript required</p></main>');
+    });
+
+    it('fetches a career page link of an alert in the html mode', async () => {
+      vacancies.findOne.mockResolvedValue({ ...LINKEDIN_VACANCY, vacancy_url: 'https://careers.example.com/jobs/7' });
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.EXTRACTED });
+      expect(crawler.fetchPage).toHaveBeenCalledWith('https://careers.example.com/jobs/7', SourceFetchModeEnum.HTML);
+      expect(postings.find).not.toHaveBeenCalled();
+    });
+
+    it('never opens a LinkedIn link: reads the same position from the board of the company and remembers it', async () => {
+      postings.find.mockResolvedValue({ url: 'https://job-boards.greenhouse.io/northwind/jobs/42', externalId: '42' });
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.EXTRACTED });
+
+      expect(crawler.fetchPage).not.toHaveBeenCalled();
+      expect(vacancies.update).toHaveBeenCalledWith(7, {
+        vacancy_text_searched_at: expect.any(Date) as Date,
+        vacancy_text_searches: 1,
+        vacancy_text_url: 'https://job-boards.greenhouse.io/northwind/jobs/42',
+        vacancy_external_id: '42',
+        vacancy_skip_reason: null
+      });
+      expect(registry.findOne).toHaveBeenCalledWith(ATSKindEnum.GREENHOUSE);
+      expect(atsClient.fetchPosting).toHaveBeenCalledWith({
+        board: 'northwind',
+        externalId: '42',
+        url: 'https://job-boards.greenhouse.io/northwind/jobs/42'
+      });
+      expect(extraction.extract).toHaveBeenCalledWith(PAGE_TEXT);
+    });
+
+    it('reads a found board posting again without a new search', async () => {
+      vacancies.findOne.mockResolvedValue({
+        ...LINKEDIN_VACANCY,
+        vacancy_text_url: 'https://job-boards.greenhouse.io/northwind/jobs/42',
+        vacancy_external_id: '42'
+      });
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.EXTRACTED });
+      expect(postings.find).not.toHaveBeenCalled();
+      expect(atsClient.fetchPosting).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the vacancy listed with a reason and counts the search when the board has no such position', async () => {
+      postings.find.mockResolvedValue(undefined);
+
+      await expect(subjectUnderTest.extract(7)).resolves.toEqual({ vacancyId: 7, outcome: VacancyExtractionOutcomeEnum.NO_TEXT });
+      expect(vacancies.update).toHaveBeenCalledWith(7, {
+        vacancy_text_searched_at: expect.any(Date) as Date,
+        vacancy_text_searches: 1,
+        vacancy_skip_reason: NO_TEXT_REASON
+      });
+      expect(crawler.fetchPage).not.toHaveBeenCalled();
+      expect(extraction.extract).not.toHaveBeenCalled();
+      expect(matching.matchVacancy).not.toHaveBeenCalled();
+    });
+
+    it('searches again only after JOB_MAIL_TEXT_RECHECK_DAYS', async () => {
+      const day = 24 * 60 * 60 * 1000;
+
+      postings.find.mockResolvedValue(undefined);
+
+      vacancies.findOne.mockResolvedValue({
+        ...LINKEDIN_VACANCY,
+        vacancy_text_searched_at: new Date(Date.now() - 6 * day),
+        vacancy_text_searches: 1
+      });
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.NO_TEXT });
+      expect(postings.find).not.toHaveBeenCalled();
+      expect(vacancies.update).toHaveBeenCalledWith(7, { vacancy_skip_reason: NO_TEXT_REASON });
+
+      vacancies.findOne.mockResolvedValue({
+        ...LINKEDIN_VACANCY,
+        vacancy_text_searched_at: new Date(Date.now() - 8 * day),
+        vacancy_text_searches: 1
+      });
+
+      await subjectUnderTest.extract(7);
+
+      expect(postings.find).toHaveBeenCalledTimes(1);
+      expect(vacancies.update).toHaveBeenLastCalledWith(7, expect.objectContaining({ vacancy_text_searches: 2 }));
+    });
+
+    it('stops searching after JOB_MAIL_TEXT_MAX_SEARCHES', async () => {
+      vacancies.findOne.mockResolvedValue({ ...LINKEDIN_VACANCY, vacancy_text_searched_at: new Date(0), vacancy_text_searches: 3 });
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.NO_TEXT });
+      expect(postings.find).not.toHaveBeenCalled();
+    });
+
+    it('does not search without the key of the web search', async () => {
+      postings.isEnabled.mockReturnValue(false);
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.NO_TEXT });
+      expect(postings.find).not.toHaveBeenCalled();
+      expect(vacancies.update).toHaveBeenCalledWith(7, { vacancy_skip_reason: NO_TEXT_REASON });
+    });
+
+    it('skips a vacancy whose site refuses the crawler, leaving the mailing source alone', async () => {
+      vacancies.findOne.mockResolvedValue({ ...LINKEDIN_VACANCY, vacancy_url: 'https://careers.example.com/jobs/7' });
+      crawler.fetchPage.mockRejectedValue(new CrawlError(CrawlErrorCodeEnum.SOURCE_BLOCKED, 'careers.example.com: HTTP 403'));
+
+      await expect(subjectUnderTest.extract(7)).resolves.toMatchObject({ outcome: VacancyExtractionOutcomeEnum.SKIPPED });
+      expect(vacancies.update).toHaveBeenCalledWith(7, {
+        vacancy_stage: VacancyStageEnum.SKIPPED,
+        vacancy_skip_reason: 'the site of the vacancy refused the crawler (403, 429 or a challenge)'
+      });
+      expect(sources.markFailed).not.toHaveBeenCalled();
+      expect(events.sourceBlocked).not.toHaveBeenCalled();
     });
   });
 });

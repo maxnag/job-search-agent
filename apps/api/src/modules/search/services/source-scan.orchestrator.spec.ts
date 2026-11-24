@@ -287,6 +287,21 @@ describe('SourceScanOrchestrator (unit)', () => {
       await expect(subjectUnderTest.scan({ sourceId: 1, force: true })).resolves.toMatchObject({ outcome: SourceScanOutcomeEnum.SCANNED });
     });
 
+    it('never scans the source of a mailing, even when forced — its vacancies come from the e-mails', async () => {
+      sources.findOne.mockResolvedValue({
+        ...SOURCE,
+        source_url: 'mailto:@jobs.example.com',
+        source_fetch_mode: SourceFetchModeEnum.JOB_MAIL
+      });
+
+      await expect(subjectUnderTest.scan({ sourceId: 1, force: true })).resolves.toMatchObject({
+        outcome: SourceScanOutcomeEnum.SKIPPED,
+        links: 0
+      });
+      expect(pages.read).not.toHaveBeenCalled();
+      expect(sources.markScanned).not.toHaveBeenCalled();
+    });
+
     it.each([
       [CrawlErrorCodeEnum.ROBOTS_DISALLOWED, SourceStatusEnum.BLOCKED_BY_ROBOTS],
       [CrawlErrorCodeEnum.SOURCE_BLOCKED, SourceStatusEnum.BLOCKED]
