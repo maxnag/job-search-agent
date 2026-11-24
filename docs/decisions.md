@@ -302,6 +302,15 @@ amendment). Every request goes through one crawler:
 - (+) One place holds every politeness rule for both fetch modes and for vacancy pages too
 - (−) A site behind a challenge stays unread — its vacancies must come from e-mail alerts
 
+**Amendment (2026-11-24):** a listing split into pages is read page after page, by code: the next page is the one
+`rel="next"` or a "Next" link names, else a numbered link exactly one page ahead (an offset — any step ahead), else
+the number after the current one in a row of page numbers — never a page further ahead, which would skip one. Every
+page goes through the same crawler — `robots.txt`, the address guard, the pause — in the mode of the source, at most
+`LISTING_MAX_PAGES` pages, and a page already read ends the list. A refusal of a later page is a gap, not a stop:
+a path `robots.txt` forbids, a failed or missing page, a refused address leave the pages read written and the
+listing incomplete (ADR-019 amendment) — the first page was allowed and read. 403, 429 or a challenge on any page
+still stops the source
+
 ---
 
 ## ADR-018: Screen by title before extraction
@@ -346,8 +355,9 @@ stored in `vacancy_actions` with its history.
 - (−) A busy scan may send several messages in a row; the notify queue sends at most one per second
 
 **Amendment (2026-11-24):** a vacancy gone from its listing is closed only when the scan saw the whole listing. A
-scan reports its gaps — pagination (`rel="next"`, a "Next" link in English, Hebrew or Ukrainian, a numbered page or
-offset ahead, a "Load more" button), the `LISTING_MAX_LINKS` cut, a `rendered` page whose links still grew when
+scan reports its gaps — pagination left unread (`rel="next"`, a "Next" link in English, Hebrew or Ukrainian, a
+numbered page or offset ahead, a row of page numbers or of numbered buttons, a "Load more" button — past
+`LISTING_MAX_PAGES`, on a page not read, or with no address to follow, ADR-017 amendment), the `LISTING_MAX_LINKS` cut, a `rendered` page whose links still grew when
 the scrolling stopped. A listing with a gap closes nothing: an extracted vacancy not on it is read again on its own page
 once it is due (`VACANCY_RECHECK_HOURS`), and the page decides — gone or saying the position is closed. The signs are
 found by code, not by the LLM, and are wide on purpose: a false gap only delays a closing, a missed one sends the owner

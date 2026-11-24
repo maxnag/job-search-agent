@@ -17,6 +17,7 @@ import { SearchConsumer } from './search.consumer.js';
 const SUMMARY = {
   sourceId: 1,
   outcome: SourceScanOutcomeEnum.SCANNED,
+  pages: 1,
   links: 3,
   positions: 2,
   created: 2,

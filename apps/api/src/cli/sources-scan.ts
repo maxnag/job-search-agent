@@ -63,6 +63,7 @@ function summaryLine(summary: ISourceScanSummary): string {
   const source = paint('bold', '#' + summary.sourceId);
   const outcome = paint(OUTCOME_FORMATS[summary.outcome], summary.outcome);
   const counts = [
+    `${summary.pages} pages`,
     `${summary.links} links`,
     `${summary.positions} positions`,
     paint('bold', `${summary.created} new`),

@@ -10,7 +10,6 @@ import { JobNameEnum, SourceFetchModeEnum, SourceStatusEnum, VacancyStageEnum } 
 import type { IEnv } from '../../../config/env.schema.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
-import { CrawlerService } from '../../crawler/services/crawler.service.js';
 import { vacancyDedupKey } from '../../vacancies/helpers/vacancy-key.helper.js';
 import { VacancyRepository } from '../../vacancies/repositories/vacancy.repository.js';
 import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
@@ -25,6 +24,7 @@ import type { ISourceScanSummary } from '../interfaces/source-scan-summary.inter
 import { SourceRepository } from '../repositories/source.repository.js';
 import { ATSListingService } from './a-t-s-listing.service.js';
 import { ListingExtractionService } from './listing-extraction.service.js';
+import { ListingPagesService } from './listing-pages.service.js';
 import { ProfilePreferencesService } from './profile-preferences.service.js';
 
 /**
@@ -70,7 +70,7 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
 
 /**
- * Scans the career pages: fetch the listing politely — a page, or the positions of an applicant tracking system
+ * Scans the career pages: fetch the listing politely — its pages, or the positions of an applicant tracking system
  * board — let the LLM pick and classify the positions, drop the ones no profile searches for by code, write the
  * vacancies, queue the new ones for extraction, tell the owner about the vacancies they heard of that are gone
  */
@@ -84,7 +84,7 @@ export class SourceScanOrchestrator {
   private readonly logger = new Logger(SourceScanOrchestrator.name);
 
   /**
-   * @param {CrawlerService} crawlerService
+   * @param {ListingPagesService} listingPagesService
    * @param {ListingExtractionService} listingExtractionService
    * @param {ATSListingService} atsListingService
    * @param {ProfilePreferencesService} profilePreferencesService
@@ -95,7 +95,7 @@ export class SourceScanOrchestrator {
    * @param {ConfigService<IEnv, true>} configService
    */
   constructor(
-    private readonly crawlerService: CrawlerService,
+    private readonly listingPagesService: ListingPagesService,
     private readonly listingExtractionService: ListingExtractionService,
     private readonly atsListingService: ATSListingService,
     private readonly profilePreferencesService: ProfilePreferencesService,
@@ -177,17 +177,17 @@ export class SourceScanOrchestrator {
       return this.processListing(source, async profiles => this.atsListingService.classify(source, board, profiles));
     }
 
-    const page = await this.fetchListing(source, async () => this.crawlerService.fetchPage(source.source_url, source.source_fetch_mode));
+    const listing = await this.fetchListing(source, async () => this.listingPagesService.read(source.source_url, source.source_fetch_mode));
 
-    if (!page) {
+    if (!listing) {
       return this.summary(source.source_id, SourceScanOutcomeEnum.BLOCKED);
     }
 
-    return this.processListing(source, async () => this.listingExtractionService.extract(page, source.source_name));
+    return this.processListing(source, async () => this.listingExtractionService.extract(listing, source.source_name));
   }
 
   /**
-   * Fetch the listing — the page, or the positions of a board; a refusal that stops the source marks it, tells the
+   * Fetch the listing — its pages, or the positions of a board; a refusal that stops the source marks it, tells the
    * owner and yields nothing
    *
    * @param {SourceRowType} source
@@ -303,6 +303,7 @@ export class SourceScanOrchestrator {
 
     const summary = {
       ...this.summary(source.source_id, SourceScanOutcomeEnum.SCANNED),
+      pages: listing.pages,
       links: listing.links,
       positions: positions.length,
       created: result.created.length,
@@ -326,6 +327,6 @@ export class SourceScanOrchestrator {
    * @returns {ISourceScanSummary}
    */
   private summary(sourceId: number, outcome: SourceScanOutcomeEnum): ISourceScanSummary {
-    return { sourceId, outcome, links: 0, positions: 0, created: 0, skipped: 0, closed: 0, queued: 0, gaps: [] };
+    return { sourceId, outcome, pages: 0, links: 0, positions: 0, created: 0, skipped: 0, closed: 0, queued: 0, gaps: [] };
   }
 }

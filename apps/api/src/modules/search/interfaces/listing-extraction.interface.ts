@@ -2,11 +2,18 @@ import type { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import type { IListedPosition } from './listed-position.interface.js';
 
 /**
- * Positions of a listing page and the number of links they were picked from
+ * Positions of a listing and the number of pages and links they were picked from
  */
 export interface IListingExtraction {
   /**
-   * Links the page offered — few of them in the `html` mode hint at a list drawn by JavaScript
+   * Pages of the listing read — a board answers in one
+   *
+   * @var {number}
+   */
+  readonly pages: number;
+
+  /**
+   * Links the pages offered — few of them in the `html` mode hint at a list drawn by JavaScript
    *
    * @var {number}
    */

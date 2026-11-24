@@ -138,7 +138,7 @@ export class ATSListingService {
       notPostings: kept.length - merged.length
     });
 
-    return { links: listed.length, positions: [...dropped, ...merged], gaps: [] };
+    return { pages: 1, links: listed.length, positions: [...dropped, ...merged], gaps: [] };
   }
 
   /**

@@ -11,6 +11,7 @@ import { VacanciesModule } from '../vacancies/vacancies.module.js';
 import { SourceRepository } from './repositories/source.repository.js';
 import { ATSListingService } from './services/a-t-s-listing.service.js';
 import { ListingExtractionService } from './services/listing-extraction.service.js';
+import { ListingPagesService } from './services/listing-pages.service.js';
 import { ProfilePreferencesService } from './services/profile-preferences.service.js';
 import { SourceRegistrationService } from './services/source-registration.service.js';
 import { SourceScanOrchestrator } from './services/source-scan.orchestrator.js';
@@ -24,6 +25,7 @@ import { SourceScanOrchestrator } from './services/source-scan.orchestrator.js';
     SourceRepository,
     ATSListingService,
     ListingExtractionService,
+    ListingPagesService,
     ProfilePreferencesService,
     SourceRegistrationService,
     SourceScanOrchestrator

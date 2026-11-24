@@ -6,16 +6,14 @@ import { ConfigService } from '@nestjs/config';
 import { LLMStepEnum } from '@job-agent/shared';
 
 import type { IEnv } from '../../../config/env.schema.js';
-import type { IFetchedPage } from '../../crawler/interfaces/fetched-page.interface.js';
 import { LLMClient } from '../../llm/clients/l-l-m.client.js';
 import { fenceUntrusted } from '../../llm/helpers/untrusted-text.helper.js';
 import { VACANCY_FIELD_LIMITS, clipNullable, clipText } from '../../vacancies/helpers/vacancy-fields.helper.js';
-import { ListingGapEnum } from '../enums/listing-gap.enum.js';
-import { extractLinkCandidates, renderLinkCandidates } from '../helpers/listing-page.helper.js';
-import { findPagination } from '../helpers/listing-pagination.helper.js';
+import { renderLinkCandidates } from '../helpers/listing-page.helper.js';
 import type { ILinkCandidate } from '../interfaces/link-candidate.interface.js';
 import type { IListedPosition } from '../interfaces/listed-position.interface.js';
 import type { IListingExtraction } from '../interfaces/listing-extraction.interface.js';
+import type { IListingLinks } from '../interfaces/listing-links.interface.js';
 import { vacancyListingSchema } from '../schemas/vacancy-listing.schema.js';
 
 /**
@@ -33,34 +31,7 @@ const PROMPT_URL = new URL('../prompts/vacancy-listing.md', import.meta.url);
 const LINKS_TAG = 'links';
 
 /**
- * Gaps of a listing page, in a fixed order
- *
- * @param {boolean} paginated The page links to more of the list
- * @param {boolean} truncated The link limit cut the list short
- * @param {boolean} partial The scrolling stopped while links were still growing
- *
- * @returns {ListingGapEnum[]}
- */
-function listingGaps(paginated: boolean, truncated: boolean, partial: boolean): ListingGapEnum[] {
-  const gaps: ListingGapEnum[] = [];
-
-  if (paginated) {
-    gaps.push(ListingGapEnum.PAGINATION);
-  }
-
-  if (truncated) {
-    gaps.push(ListingGapEnum.LINK_LIMIT);
-  }
-
-  if (partial) {
-    gaps.push(ListingGapEnum.SCROLL_LIMIT);
-  }
-
-  return gaps;
-}
-
-/**
- * Turns a listing into its positions: a page is reduced to numbered links by code, the LLM picks and classifies the
+ * Turns a listing into its positions: its pages are reduced to numbered links by code, the LLM picks and classifies the
  * vacancies among them, code maps the numbers back to the URLs. The positions of an applicant tracking system come as
  * such links too — the LLM only classifies them
  */
@@ -83,29 +54,24 @@ export class ListingExtractionService {
   ) {}
 
   /**
-   * Positions of a listing page and the gaps that kept part of the list out of sight — pagination, the link limit, a
-   * scroll stopped early; a page without links costs no LLM call
+   * Positions of a listing read page after page, with the gaps that kept part of it out of sight; a listing without
+   * links costs no LLM call
    *
-   * @param {IFetchedPage} page
-   * @param {string} sourceName Company of the positions the page does not name a company for
+   * @param {IListingLinks} listing
+   * @param {string} sourceName Company of the positions the listing does not name a company for
    *
    * @throws {Error} `LLM_OUTPUT_SCHEMA_INVALID` if the answer does not match the schema
    *
    * @returns {Promise<IListingExtraction>}
    */
-  async extract(page: IFetchedPage, sourceName: string): Promise<IListingExtraction> {
-    const { candidates, truncated } = extractLinkCandidates(
-      page.html,
-      page.url,
-      this.configService.get('LISTING_MAX_LINKS', { infer: true })
-    );
-    const gaps = listingGaps(findPagination(page.html, page.url) !== undefined, truncated, page.partial === true);
+  async extract(listing: IListingLinks, sourceName: string): Promise<IListingExtraction> {
+    const { pages, candidates, gaps } = listing;
 
     if (candidates.length === 0) {
-      return { links: 0, positions: [], gaps };
+      return { pages, links: 0, positions: [], gaps };
     }
 
-    return { links: candidates.length, positions: await this.classify(page.url, candidates, sourceName), gaps };
+    return { pages, links: candidates.length, positions: await this.classify(listing.url, candidates, sourceName), gaps };
   }
 
   /**

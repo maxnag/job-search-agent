@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractLinkCandidates, renderLinkCandidates } from './listing-page.helper.js';
+import { extractLinkCandidates, mergeLinkCandidates, renderLinkCandidates } from './listing-page.helper.js';
 
 const PAGE = 'https://careers.example.com/jobs';
 
@@ -110,6 +110,57 @@ describe('extractLinkCandidates', () => {
     const html = '<a href="/jobs/1">Job 1</a><a href="/jobs/2">Job 2</a><a href="#top">Top</a>';
 
     expect(extractLinkCandidates(html, PAGE, 2).truncated).toBe(true);
+  });
+});
+
+describe('mergeLinkCandidates', () => {
+  const NAV = { url: 'https://careers.example.com/about', text: 'About', context: '' };
+  const BACKEND = { url: 'https://careers.example.com/jobs/1', text: 'Backend Developer', context: 'Haifa' };
+  const QA = { url: 'https://careers.example.com/jobs/2', text: 'QA Engineer', context: 'Kyiv' };
+
+  it('keeps one link per URL, in page order — the navigation every page repeats once', () => {
+    const merged = mergeLinkCandidates(
+      [
+        { candidates: [NAV, BACKEND], truncated: false },
+        { candidates: [NAV, QA], truncated: false }
+      ],
+      10
+    );
+
+    expect(merged).toEqual({ candidates: [NAV, BACKEND, QA], truncated: false });
+  });
+
+  it('takes the link with text over one without, at the place of the first', () => {
+    const icon = { ...BACKEND, text: '', context: '' };
+    const merged = mergeLinkCandidates(
+      [
+        { candidates: [icon, NAV], truncated: false },
+        { candidates: [BACKEND], truncated: false }
+      ],
+      10
+    );
+
+    expect(merged.candidates).toEqual([BACKEND, NAV]);
+  });
+
+  it('is not cut short when the links fill the limit exactly', () => {
+    expect(mergeLinkCandidates([{ candidates: [NAV, BACKEND], truncated: false }], 2).truncated).toBe(false);
+  });
+
+  it('is cut short when a link is left after the limit', () => {
+    expect(
+      mergeLinkCandidates(
+        [
+          { candidates: [NAV, BACKEND], truncated: false },
+          { candidates: [NAV, QA], truncated: false }
+        ],
+        2
+      )
+    ).toEqual({ candidates: [NAV, BACKEND], truncated: true });
+  });
+
+  it('is cut short when a page was cut short itself', () => {
+    expect(mergeLinkCandidates([{ candidates: [NAV], truncated: true }], 10).truncated).toBe(true);
   });
 });
 
