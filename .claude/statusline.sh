@@ -29,8 +29,8 @@ git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-
 
 RESETS_FMT=""
 if [ "$QUOTA_RESETS" -gt 0 ] 2>/dev/null; then
-  RESET_TIME=$(date -d "@$QUOTA_RESETS" "+%I:%M%p" 2>/dev/null \
-    || date -r "$QUOTA_RESETS" "+%I:%M%p" 2>/dev/null \
+  RESET_TIME=$(date -d "@$QUOTA_RESETS" "+%H:%M" 2>/dev/null \
+    || date -r "$QUOTA_RESETS" "+%H:%M" 2>/dev/null \
     || echo "?")
   RESETS_FMT=" (↺${RESET_TIME})"
 fi
