@@ -68,3 +68,12 @@ modules/
 - [ ] Never create a `utils/` folder inside a module — use `helpers/` or a workspace package
 - [ ] A provider another module uses is in `exports` — a missing export compiles and fails only at start-up
 - [ ] Types shared by the app and the MCP servers live in `packages/shared`, never imported across apps
+
+## Commands (`apps/api/src/cli/`)
+
+- [ ] A command describes itself in one `SPEC: ICLISpec` constant — arguments, options, examples, notes — and reads the
+      command line with `readCLI(SPEC)`; never `parseArgs` directly. A new option goes into the spec only: the help,
+      the checks and the "Did you mean" suggestion follow from it
+- [ ] The root module (`CLIModule`, `ScanCLIModule`) is imported **after** `readCLI`, with `await import()` — `@Module`
+      runs `createConfigModule()` at import, and the env validation would kill `--help` on a machine without `.env`
+- [ ] An option whose values are an enum takes `choices: Object.values(<Enum>)`; a number — `integer: true`

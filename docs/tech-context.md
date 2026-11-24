@@ -20,6 +20,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Mail | `googleapis` (Gmail, read-only) | 190.0.0 | API |
 | Telegram | grammY | 1.46.0 | API |
 | Command output | `cli-table3` (tables), `util.styleText` of Node (colours) | 0.6.5 | host |
+| Command line | `util.parseArgs` of Node as a lexer; `parseCLI` builds the parsing, help and "Did you mean" from one `ICLISpec` | — | host |
 | Agent tools | `@modelcontextprotocol/sdk`, stdio | 1.32.2 | host |
 | Logs | `nestjs-pino`, `pino`, `pino-opentelemetry-transport` | 5.3.1, 10.4.0, 4.0.2 | host |
 | Tests | Vitest + `unplugin-swc` (`@swc/core`) | 5.1.0, 2.0.0 (1.16.22) | host |

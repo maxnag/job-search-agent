@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `b012641` (career pages on ATS boards and company discovery)
-> Run `git log b012641..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `52b7b63` (command help, typo hints and report filters)
+> Run `git log 52b7b63..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
