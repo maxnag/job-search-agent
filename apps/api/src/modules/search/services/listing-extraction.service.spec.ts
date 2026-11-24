@@ -10,6 +10,7 @@ import { LLMStepEnum, RoleFamilyEnum, SeniorityLevelEnum, WorkModeEnum } from '@
 import { createConfigMock } from '../../../../test/config-service.mock.js';
 import type { IFetchedPage } from '../../crawler/interfaces/fetched-page.interface.js';
 import { LLMClient } from '../../llm/clients/l-l-m.client.js';
+import { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import { type VacancyListingType, vacancyListingSchema } from '../schemas/vacancy-listing.schema.js';
 import { ListingExtractionService } from './listing-extraction.service.js';
 
@@ -87,7 +88,8 @@ describe('ListingExtractionService (unit)', () => {
           roleFamily: RoleFamilyEnum.BACKEND,
           level: SeniorityLevelEnum.SENIOR
         }
-      ]
+      ],
+      gaps: []
     });
 
     const request = llm.generateBySchema.mock.calls[0]?.[0];
@@ -100,9 +102,30 @@ describe('ListingExtractionService (unit)', () => {
   it('costs no LLM call for a page without links', async () => {
     await expect(subjectUnderTest.extract({ ...PAGE, html: '<p>No openings</p>' }, 'Northwind')).resolves.toEqual({
       links: 0,
-      positions: []
+      positions: [],
+      gaps: []
     });
     expect(llm.generateBySchema).not.toHaveBeenCalled();
+  });
+
+  it('reports pagination, the link limit and a partial scroll as gaps, in that order', async () => {
+    llm.generateBySchema.mockResolvedValue({ data: { positions: [] }, model: 'm' });
+
+    const links = Array.from({ length: 101 }, (_, index) => `<a href="/jobs/${index}">Job ${index}</a>`).join('');
+    const html = `${links}<a rel="next" href="/jobs?page=2">Next</a>`;
+
+    await expect(subjectUnderTest.extract({ ...PAGE, html, partial: true }, 'Northwind')).resolves.toMatchObject({
+      links: 100,
+      gaps: [ListingGapEnum.PAGINATION, ListingGapEnum.LINK_LIMIT, ListingGapEnum.SCROLL_LIMIT]
+    });
+  });
+
+  it('reports the gaps of a page without links too', async () => {
+    await expect(subjectUnderTest.extract({ ...PAGE, html: '<button>Load more</button>' }, 'Northwind')).resolves.toEqual({
+      links: 0,
+      positions: [],
+      gaps: [ListingGapEnum.PAGINATION]
+    });
   });
 
   it('keeps the company the page names for a posting', async () => {

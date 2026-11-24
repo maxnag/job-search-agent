@@ -1,9 +1,10 @@
 import { type DeepMocked, createMock } from '@golevelup/ts-vitest';
 import { getQueueToken } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   JobNameEnum,
@@ -23,6 +24,7 @@ import { CrawlerService } from '../../crawler/services/crawler.service.js';
 import type { VacancyRowType } from '../../vacancies/interfaces/vacancy-row.interface.js';
 import { VacancyRepository } from '../../vacancies/repositories/vacancy.repository.js';
 import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
+import { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import { SourceScanOutcomeEnum } from '../enums/source-scan-outcome.enum.js';
 import type { IListedPosition } from '../interfaces/listed-position.interface.js';
 import type { SourceRowType } from '../interfaces/source-row.interface.js';
@@ -79,7 +81,7 @@ describe('SourceScanOrchestrator (unit)', () => {
     atsListing = createMock<ATSListingService>();
     sources.findOne.mockResolvedValue(SOURCE);
     crawler.fetchPage.mockResolvedValue(PAGE);
-    listing.extract.mockResolvedValue({ links: 3, positions: [BACKEND, QA] });
+    listing.extract.mockResolvedValue({ links: 3, positions: [BACKEND, QA], gaps: [] });
     preferences.findAll.mockResolvedValue([
       { name: 'developer', preferences: { role_families: [RoleFamilyEnum.BACKEND], places: [], excluded_companies: [] } }
     ]);
@@ -112,6 +114,7 @@ describe('SourceScanOrchestrator (unit)', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await moduleFixture.close();
   });
 
@@ -162,7 +165,7 @@ describe('SourceScanOrchestrator (unit)', () => {
     beforeEach(() => {
       sources.findOne.mockResolvedValue(ATS_SOURCE);
       atsListing.fetch.mockResolvedValue(BOARD);
-      atsListing.classify.mockResolvedValue({ links: 2, positions: [BACKEND, QA] });
+      atsListing.classify.mockResolvedValue({ links: 2, positions: [BACKEND, QA], gaps: [] });
     });
 
     it('reads the board through its API, classifies it with the profiles and writes the plan — no page is fetched', async () => {
@@ -229,7 +232,8 @@ describe('SourceScanOrchestrator (unit)', () => {
         created: 2,
         skipped: 1,
         closed: 0,
-        queued: 1
+        queued: 1,
+        gaps: []
       });
     });
 
@@ -316,13 +320,54 @@ describe('SourceScanOrchestrator (unit)', () => {
     });
 
     it('closes nothing when the page yielded no position although vacancies are open', async () => {
-      listing.extract.mockResolvedValue({ links: 40, positions: [] });
+      listing.extract.mockResolvedValue({ links: 40, positions: [], gaps: [] });
       vacancies.findOpenBySource.mockResolvedValue([{ vacancy_id: 5 } as VacancyRowType]);
       vacancies.applyScan.mockResolvedValue({ created: [], updated: [], closedIds: [] });
 
       await subjectUnderTest.scan({ sourceId: 1 });
 
       expect(vacancies.applyScan.mock.calls[0]?.[0].closeIds).toEqual([]);
+    });
+
+    it('closes nothing on an incomplete listing, rechecks the extracted vacancies not on it, warns and reports the gaps', async () => {
+      const unseen = {
+        vacancy_id: 8,
+        vacancy_url: 'https://careers.example.com/jobs/8',
+        vacancy_dedup_key: 'northwind|data engineer',
+        vacancy_stage: VacancyStageEnum.EXTRACTED,
+        vacancy_data: { title: 'Data Engineer' },
+        vacancy_checked_at: null
+      } as unknown as VacancyRowType;
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      listing.extract.mockResolvedValue({ links: 3, positions: [BACKEND, QA], gaps: [ListingGapEnum.PAGINATION] });
+      vacancies.findOpenBySource.mockResolvedValue([unseen]);
+
+      const summary = await subjectUnderTest.scan({ sourceId: 1 });
+
+      expect(vacancies.applyScan.mock.calls[0]?.[0]).toMatchObject({ closeIds: [], recheckIds: [8] });
+      expect(events.queueExtraction).toHaveBeenCalledWith([10, 8]);
+      expect(warn).toHaveBeenCalledWith({
+        message: 'Listing is incomplete, nothing closed',
+        sourceId: 1,
+        gaps: [ListingGapEnum.PAGINATION],
+        open: 1,
+        rechecked: 1
+      });
+      expect(summary).toMatchObject({ closed: 0, queued: 2, gaps: [ListingGapEnum.PAGINATION] });
+    });
+
+    it('warns once, as an empty listing, when an incomplete page yielded no position', async () => {
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      listing.extract.mockResolvedValue({ links: 0, positions: [], gaps: [ListingGapEnum.SCROLL_LIMIT] });
+      vacancies.findOpenBySource.mockResolvedValue([{ vacancy_id: 5 } as VacancyRowType]);
+      vacancies.applyScan.mockResolvedValue({ created: [], updated: [], closedIds: [] });
+
+      await subjectUnderTest.scan({ sourceId: 1 });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(expect.objectContaining({ message: 'Listing has no positions, nothing closed' }));
     });
   });
 });

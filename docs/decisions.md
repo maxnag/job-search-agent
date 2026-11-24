@@ -345,6 +345,14 @@ stored in `vacancy_actions` with its history.
 - (+) No duplicates across scans and resume versions
 - (−) A busy scan may send several messages in a row; the notify queue sends at most one per second
 
+**Amendment (2026-11-24):** a vacancy gone from its listing is closed only when the scan saw the whole listing. A
+scan reports its gaps — pagination (`rel="next"`, a "Next" link in English, Hebrew or Ukrainian, a numbered page or
+offset ahead, a "Load more" button), the `LISTING_MAX_LINKS` cut, a `rendered` page whose links still grew when
+the scrolling stopped. A listing with a gap closes nothing: an extracted vacancy not on it is read again on its own page
+once it is due (`VACANCY_RECHECK_HOURS`), and the page decides — gone or saying the position is closed. The signs are
+found by code, not by the LLM, and are wide on purpose: a false gap only delays a closing, a missed one sends the owner
+a false "closed" card. An ATS board answers with the whole list and has no gaps
+
 ---
 
 ## ADR-020: Text from the web is untrusted

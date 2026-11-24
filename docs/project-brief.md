@@ -43,6 +43,10 @@ with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops t
    excluded cities and companies. A position nobody wants is kept as `skipped` with the reason (ADR-018)
 3. **Extraction** of the rest, then matching and a Telegram card on each event (ADR-019)
 
+A vacancy gone from the listing is closed only when the scan saw the whole list. Pagination, the link limit or a
+scroll stopped early make it incomplete: nothing is closed, and an extracted vacancy not seen is read again on its own
+page, which decides (ADR-019 amendment). `sources:scan` names the gaps.
+
 `pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason —
 filtered by source, stage, verdict, reason, place and age, or as a summary per source (`--help` lists the options).
 

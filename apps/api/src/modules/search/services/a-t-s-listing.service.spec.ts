@@ -193,7 +193,7 @@ describe('ATSListingService (unit)', () => {
       const result = await subjectUnderTest.classify(SOURCE, { company: ' Northwind Labs ', positions: [position('1')] }, [PROFILE]);
 
       expect(listingExtraction.classify).toHaveBeenCalledWith(expect.any(String), expect.any(Array), 'Northwind Labs', false);
-      expect(result).toEqual({ links: 1, positions: [] });
+      expect(result).toEqual({ links: 1, positions: [], gaps: [] });
     });
 
     it('asks the LLM nothing new for a board where every position is dropped', async () => {

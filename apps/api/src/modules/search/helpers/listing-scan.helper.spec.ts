@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { RoleFamilyEnum, SeniorityLevelEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
 
 import type { VacancyRowType } from '../../vacancies/interfaces/vacancy-row.interface.js';
+import { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import type { IListingScanRequest } from '../interfaces/listing-scan-request.interface.js';
 import type { IScreenedPosition } from '../interfaces/screened-position.interface.js';
 import { planListingScan } from './listing-scan.helper.js';
@@ -68,7 +69,7 @@ function row(changes: Partial<VacancyRowType> = {}): VacancyRowType {
 }
 
 /**
- * A scan request with the given positions and stored rows
+ * A scan request of a whole listing with the given positions and stored rows
  *
  * @param {IScreenedPosition[]} positions
  * @param {VacancyRowType[]} known
@@ -77,7 +78,7 @@ function row(changes: Partial<VacancyRowType> = {}): VacancyRowType {
  * @returns {IListingScanRequest}
  */
 function request(positions: IScreenedPosition[], known: VacancyRowType[] = [], open: VacancyRowType[] = known): IListingScanRequest {
-  return { sourceId: 1, positions, known, open, now: NOW, recheckBefore: RECHECK_BEFORE };
+  return { sourceId: 1, positions, gaps: [], known, open, now: NOW, recheckBefore: RECHECK_BEFORE };
 }
 
 describe('planListingScan', () => {
@@ -220,5 +221,51 @@ describe('planListingScan', () => {
 
   it('never rechecks a vacancy that was not extracted', () => {
     expect(planListingScan(request([position()], [row()])).recheckIds).toEqual([]);
+  });
+
+  describe('an incomplete listing', () => {
+    const goneExtracted = (changes: Partial<VacancyRowType> = {}): VacancyRowType =>
+      row({
+        vacancy_id: 8,
+        vacancy_url: 'https://careers.example.com/jobs/2',
+        vacancy_dedup_key: 'northwind|frontend developer',
+        vacancy_stage: VacancyStageEnum.EXTRACTED,
+        vacancy_data: { title: 'Frontend Developer' },
+        ...changes
+      });
+
+    it.each([ListingGapEnum.PAGINATION, ListingGapEnum.LINK_LIMIT, ListingGapEnum.SCROLL_LIMIT])('closes nothing with the %s gap', gap => {
+      const plan = planListingScan({ ...request([position()], [row()], [row(), goneExtracted()]), gaps: [gap] });
+
+      expect(plan.closeIds).toEqual([]);
+    });
+
+    it('rechecks an extracted vacancy not on the listing when it is due — its page decides whether it is closed', () => {
+      const plan = planListingScan({ ...request([position()], [row()], [row(), goneExtracted()]), gaps: [ListingGapEnum.PAGINATION] });
+
+      expect(plan.recheckIds).toEqual([8]);
+    });
+
+    it('does not recheck an extracted vacancy not on the listing that was read after the recheck time', () => {
+      const plan = planListingScan({
+        ...request([position()], [row()], [row(), goneExtracted({ vacancy_checked_at: NOW })]),
+        gaps: [ListingGapEnum.PAGINATION]
+      });
+
+      expect(plan.recheckIds).toEqual([]);
+    });
+
+    it('leaves a vacancy not on the listing and never extracted alone', () => {
+      const listed = row({ vacancy_id: 9, vacancy_url: 'https://careers.example.com/jobs/3', vacancy_dedup_key: 'northwind|qa engineer' });
+      const plan = planListingScan({ ...request([position()], [row()], [row(), listed]), gaps: [ListingGapEnum.PAGINATION] });
+
+      expect(plan).toMatchObject({ closeIds: [], recheckIds: [] });
+    });
+
+    it('still writes the positions it saw', () => {
+      const plan = planListingScan({ ...request([position()]), gaps: [ListingGapEnum.PAGINATION] });
+
+      expect(plan.inserts).toHaveLength(1);
+    });
   });
 });
