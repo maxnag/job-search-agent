@@ -9,7 +9,7 @@ OUTPUT_TOKENS=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0'
 PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
 DURATION_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 QUOTA_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // 0' | cut -d. -f1)
-QUOTA_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // 0')
+QUOTA_RESETS=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // 0' | cut -d. -f1)
 
 CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
 
@@ -29,7 +29,10 @@ git rev-parse --git-dir > /dev/null 2>&1 && BRANCH=" | 🌿 $(git branch --show-
 
 RESETS_FMT=""
 if [ "$QUOTA_RESETS" -gt 0 ] 2>/dev/null; then
-  RESETS_FMT=" (↺$(date -r "$QUOTA_RESETS" "+%I:%M%p" 2>/dev/null || echo "?"))"
+  RESET_TIME=$(date -d "@$QUOTA_RESETS" "+%I:%M%p" 2>/dev/null \
+    || date -r "$QUOTA_RESETS" "+%I:%M%p" 2>/dev/null \
+    || echo "?")
+  RESETS_FMT=" (↺${RESET_TIME})"
 fi
 
 echo -e "${CYAN}[$MODEL]${RESET} 📁 ${DIR##*/}$BRANCH"

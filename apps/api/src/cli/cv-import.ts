@@ -1,5 +1,4 @@
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -11,21 +10,37 @@ import { VacancyMatchingService } from '../modules/matching/services/vacancy-mat
 import { paint, paintVerdict } from '../modules/report/helpers/terminal-style.helper.js';
 import { formatResumeSummary } from '../modules/resume/helpers/resume-summary.helper.js';
 import { ResumeImportOrchestrator } from '../modules/resume/services/resume-import.orchestrator.js';
-import { CLIModule } from './cli.module.js';
+import { readCLI } from './helpers/c-l-i-args.helper.js';
+import type { ICLISpec } from './helpers/interfaces/c-l-i-spec.interface.js';
 
-const USAGE = 'Usage: pnpm cv:import <resume file> --profile <name>\n';
+/**
+ * Arguments, options and help of the command
+ *
+ * @type {ICLISpec}
+ */
+const SPEC: ICLISpec = {
+  command: 'cv:import',
+  summary: 'Turn a resume into a new version of a profile, print the profile and match every vacancy against it again.',
+  arguments: [{ name: 'file', description: 'Resume file (PDF)', required: true }],
+  options: [{ name: 'profile', value: 'name', description: 'Profile the resume belongs to — created on its first import', required: true }],
+  examples: [{ args: '~/cv/developer.pdf --profile developer', description: 'Import a resume into the developer profile' }],
+  notes: [
+    'A file the profile already has is not read again: an older version of it becomes current once more.',
+    'A resume is read by the LLM of LLM_PROVIDER — Ollama has to be running for LLM_PROVIDER=ollama.'
+  ]
+};
+
 const logger = new Logger('CVImport');
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { profile: { type: 'string' } } });
-const [file] = positionals;
+const args = readCLI(SPEC);
+const [file] = args?.positionals ?? [];
+const profile = args?.values.profile?.[0];
 
-if (!file || !values.profile) {
-  process.stderr.write(USAGE);
-  process.exitCode = 1;
-} else {
+if (file !== undefined && profile !== undefined) {
+  const { CLIModule } = await import('./cli.module.js');
   const app = await NestFactory.createApplicationContext(CLIModule, { logger: ['error', 'warn', 'log', 'debug'] });
 
   try {
-    const result = await app.get(ResumeImportOrchestrator).processImport({ filePath: resolve(file), profileName: values.profile });
+    const result = await app.get(ResumeImportOrchestrator).processImport({ filePath: resolve(file), profileName: profile });
 
     process.stdout.write(formatResumeSummary(result));
 

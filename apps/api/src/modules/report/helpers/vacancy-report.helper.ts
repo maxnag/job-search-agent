@@ -2,6 +2,7 @@ import Table from 'cli-table3';
 
 import { SourceFetchModeEnum, SourceStatusEnum, VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
 
+import type { IVacancyReportFilter } from '../interfaces/vacancy-report-filter.interface.js';
 import type { IReportMatch, IReportSource, IReportVacancy, IVacancyReportData } from '../interfaces/vacancy-report.interface.js';
 import { paint, paintRow, paintStage, paintStatus, paintVerdict } from './terminal-style.helper.js';
 
@@ -159,14 +160,15 @@ function vacancyTable(vacancies: readonly IReportVacancy[], matches: readonly IR
 
 /**
  * The header of a source and a hint when a scanned `html` page the crawler did not stop yielded no open position — its
- * list may be drawn by JavaScript
+ * list may be drawn by JavaScript; a report narrowed by a filter gives no hint, its empty list proves nothing
  *
  * @param {IReportSource} source
  * @param {readonly IReportVacancy[]} vacancies
+ * @param {boolean} narrowed
  *
  * @returns {string[]}
  */
-function sourceLines(source: IReportSource, vacancies: readonly IReportVacancy[]): string[] {
+function sourceLines(source: IReportSource, vacancies: readonly IReportVacancy[], narrowed: boolean): string[] {
   const switched = source.isActive ? 'active' : paint('yellow', 'switched off');
   const state = [source.fetchMode, paintStatus(source.status), switched].join(DOT);
   const scanned = source.lastScanAt ? `last scan ${DATE_TIME.format(source.lastScanAt)}` : 'never scanned';
@@ -180,7 +182,13 @@ function sourceLines(source: IReportSource, vacancies: readonly IReportVacancy[]
     lines.push(paint('red', `Error: ${source.lastError}`));
   }
 
-  if (source.fetchMode === SourceFetchModeEnum.HTML && source.status === SourceStatusEnum.OK && source.lastScanAt && open === 0) {
+  if (
+    !narrowed &&
+    source.fetchMode === SourceFetchModeEnum.HTML &&
+    source.status === SourceStatusEnum.OK &&
+    source.lastScanAt &&
+    open === 0
+  ) {
     lines.push(
       paint(
         'yellow',
@@ -193,50 +201,108 @@ function sourceLines(source: IReportSource, vacancies: readonly IReportVacancy[]
 }
 
 /**
- * Totals by stage and, for the extracted vacancies, by verdict
+ * Counts of positions by stage and, for the extracted ones, of verdicts
  *
- * @param {IVacancyReportData} data
+ * @param {readonly IReportVacancy[]} vacancies
+ * @param {readonly IReportMatch[]} matches
  *
  * @returns {string}
  */
-function totals(data: IVacancyReportData): string {
+function counts(vacancies: readonly IReportVacancy[], matches: readonly IReportMatch[]): string {
   const byStage = Object.values(VacancyStageEnum).map(
-    stage => `${paintStage(stage)} ${data.vacancies.filter(vacancy => vacancy.stage === stage).length}`
+    stage => `${paintStage(stage)} ${vacancies.filter(vacancy => vacancy.stage === stage).length}`
   );
-  const vacancyIds = new Set(data.vacancies.map(vacancy => vacancy.vacancyId));
-  const matches = data.matches.filter(match => vacancyIds.has(match.vacancyId));
+  const vacancyIds = new Set(vacancies.map(vacancy => vacancy.vacancyId));
+  const own = matches.filter(match => vacancyIds.has(match.vacancyId));
   const byVerdict = Object.values(VacancyMatchVerdictEnum).map(verdict =>
-    paintVerdict(verdict, `${verdict} ${matches.filter(match => match.verdict === verdict).length}`)
+    paintVerdict(verdict, `${verdict} ${own.filter(match => match.verdict === verdict).length}`)
   );
-  const positions = `${data.vacancies.length} positions — ${byStage.join(DOT)}`;
 
-  return `${paint('bold', 'Totals')}  ${positions}   verdicts: ${byVerdict.join(DOT)}`;
+  return `${vacancies.length} positions — ${byStage.join(DOT)}   verdicts: ${byVerdict.join(DOT)}`;
 }
 
 /**
- * Every position of every source with its stage and why: the skip reason of the code filter, or the verdict per
- * profile with its findings — for the owner to check the filters drop nothing they need
+ * The filter narrows the positions themselves, not only the sources or how many of them are shown
  *
- * @param {IVacancyReportData} data
+ * @param {IVacancyReportFilter} filter
+ *
+ * @returns {boolean}
+ */
+function narrowsPositions(filter: IVacancyReportFilter): boolean {
+  const lists = [filter.stages, filter.verdicts].some(list => (list?.length ?? 0) > 0);
+  const values = [filter.reason, filter.country, filter.workMode, filter.title, filter.sinceDays];
+
+  return lists || values.some(value => value !== undefined);
+}
+
+/**
+ * The filter the report was built with, in words — closed positions named either way
+ *
+ * @param {IVacancyReportFilter} filter
  *
  * @returns {string}
  */
-export function formatVacancyReport(data: IVacancyReportData): string {
+function filterLine(filter: IVacancyReportFilter): string {
+  const showsClosed = filter.closed === true || filter.stages?.includes(VacancyStageEnum.CLOSED) === true;
+  const parts = [
+    filter.sourceIds?.length ? `source ${filter.sourceIds.map(id => '#' + id).join(', ')}` : '',
+    filter.stages?.length ? `stage ${filter.stages.join(', ')}` : '',
+    filter.verdicts?.length ? `verdict ${filter.verdicts.join(', ')}` : '',
+    filter.reason === undefined ? '' : `reason contains "${filter.reason}"`,
+    filter.country === undefined ? '' : `country ${filter.country.toUpperCase()}`,
+    filter.workMode === undefined ? '' : `work mode ${filter.workMode}`,
+    filter.title === undefined ? '' : `title contains "${filter.title}"`,
+    filter.sinceDays === undefined ? '' : `first seen in the last ${filter.sinceDays} days`,
+    filter.limit === undefined ? '' : `newest ${filter.limit} per source`,
+    showsClosed ? 'closed shown' : 'closed hidden (--closed shows them)'
+  ];
+
+  return `${paint('bold', 'Filter:')} ${parts.filter(Boolean).join(DOT)}`;
+}
+
+/**
+ * Every position of the sources the filter selects with its stage and why: the skip reason of the code filter, or the
+ * verdict per profile with its findings — for the owner to check the filters drop nothing they need. A summary shows
+ * the counts of each source instead of its table
+ *
+ * @param {IVacancyReportData} data
+ * @param {IVacancyReportFilter} [filter]
+ * @param {boolean} [summary]
+ *
+ * @returns {string}
+ */
+export function formatVacancyReport(data: IVacancyReportData, filter: IVacancyReportFilter = {}, summary = false): string {
   if (data.sources.length === 0) {
     return 'No sources. Add career pages to the sources table.\n';
   }
 
+  const narrowed = narrowsPositions(filter);
   const lines: string[] = [];
 
   for (const source of data.sources) {
     const vacancies = data.vacancies.filter(vacancy => vacancy.sourceId === source.sourceId);
 
-    lines.push(...sourceLines(source, vacancies));
-    lines.push(vacancies.length > 0 ? vacancyTable(vacancies, data.matches) : paint('dim', 'No positions'));
+    if (narrowed && vacancies.length === 0) {
+      continue;
+    }
+
+    lines.push(...sourceLines(source, vacancies, narrowed));
+
+    if (summary) {
+      lines.push(counts(vacancies, data.matches));
+    } else {
+      lines.push(vacancies.length > 0 ? vacancyTable(vacancies, data.matches) : paint('dim', 'No positions'));
+    }
+
     lines.push('');
   }
 
-  lines.push(totals(data));
+  if (lines.length === 0) {
+    lines.push(paint('dim', 'No position matches the filter.'), '');
+  }
+
+  lines.push(filterLine(filter));
+  lines.push(`${paint('bold', 'Totals')}  ${counts(data.vacancies, data.matches)}`);
 
   return `${lines.join('\n')}\n`;
 }

@@ -31,15 +31,15 @@ describe('VacancyReportService (unit)', () => {
     reports.findAll.mockResolvedValue({ sources: [], vacancies: [], matches: [] });
 
     await expect(subjectUnderTest.build()).resolves.toBe('No sources. Add career pages to the sources table.\n');
-    expect(reports.findAll).toHaveBeenCalledWith(undefined);
+    expect(reports.findAll).toHaveBeenCalledWith({});
   });
 
   it('reads one source when asked', async () => {
     reports.findAll.mockResolvedValue({ sources: [], vacancies: [], matches: [] });
 
-    await subjectUnderTest.build(2);
+    await subjectUnderTest.build({ sourceIds: [2] });
 
-    expect(reports.findAll).toHaveBeenCalledWith(2);
+    expect(reports.findAll).toHaveBeenCalledWith({ sourceIds: [2] });
   });
 
   it('passes a failed read on', async () => {
