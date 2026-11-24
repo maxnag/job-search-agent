@@ -66,6 +66,7 @@ describe('SourceScanOrchestrator (unit)', () => {
   let sources: DeepMocked<SourceRepository>;
   let vacancies: DeepMocked<VacancyRepository>;
   let queue: DeepMocked<Queue>;
+  let atsListing: DeepMocked<ATSListingService>;
 
   beforeEach(async () => {
     crawler = createMock<CrawlerService>();
@@ -75,6 +76,7 @@ describe('SourceScanOrchestrator (unit)', () => {
     sources = createMock<SourceRepository>();
     vacancies = createMock<VacancyRepository>();
     queue = createMock<Queue>();
+    atsListing = createMock<ATSListingService>();
     sources.findOne.mockResolvedValue(SOURCE);
     crawler.fetchPage.mockResolvedValue(PAGE);
     listing.extract.mockResolvedValue({ links: 3, positions: [BACKEND, QA] });
@@ -96,7 +98,7 @@ describe('SourceScanOrchestrator (unit)', () => {
         SourceScanOrchestrator,
         { provide: CrawlerService, useValue: crawler },
         { provide: ListingExtractionService, useValue: listing },
-        { provide: ATSListingService, useValue: {} },
+        { provide: ATSListingService, useValue: atsListing },
         { provide: ProfilePreferencesService, useValue: preferences },
         { provide: PipelineEventsService, useValue: events },
         { provide: SourceRepository, useValue: sources },
@@ -139,6 +141,67 @@ describe('SourceScanOrchestrator (unit)', () => {
       await expect(subjectUnderTest.queueScans()).resolves.toBe(0);
       expect(queue.add).not.toHaveBeenCalled();
     });
+  });
+
+  describe('queueScan', () => {
+    it('queues the scan of one source now, deduplicated', async () => {
+      await subjectUnderTest.queueScan(7);
+
+      expect(queue.add).toHaveBeenCalledWith(
+        JobNameEnum.SCAN_SOURCE,
+        { sourceId: 7 },
+        { deduplication: { id: `${JobNameEnum.SCAN_SOURCE}:7` } }
+      );
+    });
+  });
+
+  describe('scan — a board of an applicant tracking system', () => {
+    const ATS_SOURCE = { ...SOURCE, source_url: 'https://job-boards.greenhouse.io/northwind', source_fetch_mode: SourceFetchModeEnum.ATS };
+    const BOARD = { company: 'Northwind', positions: [] };
+
+    beforeEach(() => {
+      sources.findOne.mockResolvedValue(ATS_SOURCE);
+      atsListing.fetch.mockResolvedValue(BOARD);
+      atsListing.classify.mockResolvedValue({ links: 2, positions: [BACKEND, QA] });
+    });
+
+    it('reads the board through its API, classifies it with the profiles and writes the plan — no page is fetched', async () => {
+      await expect(subjectUnderTest.scan({ sourceId: 1 })).resolves.toMatchObject({
+        outcome: SourceScanOutcomeEnum.SCANNED,
+        links: 2,
+        positions: 2
+      });
+
+      expect(atsListing.fetch).toHaveBeenCalledWith(ATS_SOURCE);
+      expect(atsListing.classify).toHaveBeenCalledWith(ATS_SOURCE, BOARD, [expect.objectContaining({ name: 'developer' })]);
+      expect(crawler.fetchPage).not.toHaveBeenCalled();
+      expect(listing.extract).not.toHaveBeenCalled();
+      expect(sources.markScanned).toHaveBeenCalledWith(1);
+    });
+
+    it('stops the source when the system refuses the crawler, and tells the owner', async () => {
+      atsListing.fetch.mockRejectedValue(new CrawlError(CrawlErrorCodeEnum.SOURCE_BLOCKED, 'boards-api.greenhouse.io'));
+
+      await expect(subjectUnderTest.scan({ sourceId: 1 })).resolves.toMatchObject({ outcome: SourceScanOutcomeEnum.BLOCKED });
+      expect(sources.markFailed).toHaveBeenCalledWith(
+        1,
+        `${CrawlErrorCodeEnum.SOURCE_BLOCKED}: boards-api.greenhouse.io`,
+        SourceStatusEnum.BLOCKED
+      );
+      expect(events.sourceBlocked).toHaveBeenCalledWith(1);
+      expect(atsListing.classify).not.toHaveBeenCalled();
+    });
+
+    it.each(['ATS_RESPONSE_INVALID: Greenhouse board northwind does not match the schema', 'SOURCE_URL_NOT_ATS: source 1'])(
+      'records %j as the failure of the source and passes it on',
+      async message => {
+        atsListing.fetch.mockRejectedValue(new Error(message));
+
+        await expect(subjectUnderTest.scan({ sourceId: 1 })).rejects.toThrow(message);
+        expect(sources.markFailed).toHaveBeenCalledWith(1, message);
+        expect(events.sourceBlocked).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('scan', () => {

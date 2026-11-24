@@ -46,14 +46,16 @@ describe('SearchConsumer (unit)', () => {
   let moduleFixture: TestingModule;
   let subjectUnderTest: SearchConsumer;
   let orchestrator: DeepMocked<SourceScanOrchestrator>;
+  let discovery: DeepMocked<DiscoveryOrchestrator>;
 
   beforeEach(async () => {
     orchestrator = createMock<SourceScanOrchestrator>();
+    discovery = createMock<DiscoveryOrchestrator>();
     moduleFixture = await Test.createTestingModule({
       providers: [
         SearchConsumer,
         { provide: SourceScanOrchestrator, useValue: orchestrator },
-        { provide: DiscoveryOrchestrator, useValue: {} }
+        { provide: DiscoveryOrchestrator, useValue: discovery }
       ]
     }).compile();
 
@@ -81,6 +83,21 @@ describe('SearchConsumer (unit)', () => {
 
       await expect(subjectUnderTest.process(job(JobNameEnum.SCAN_SOURCE))).resolves.toEqual(SUMMARY);
       expect(orchestrator.scan).toHaveBeenCalledWith({ sourceId: 1 });
+    });
+
+    it('runs the scheduled discovery for real, not as a dry run', async () => {
+      const summary = { queries: 3, boards: 2, known: 1, failed: 0, cards: 1, discovered: [] };
+
+      discovery.discover.mockResolvedValue(summary);
+
+      await expect(subjectUnderTest.process(job(JobNameEnum.DISCOVER_SOURCES))).resolves.toBe(summary);
+      expect(discovery.discover).toHaveBeenCalledWith(false);
+    });
+
+    it('stops the discovery for good when the web search refuses the key', async () => {
+      discovery.discover.mockRejectedValue(new Error('BRAVE_SEARCH_UNAUTHORIZED: HTTP 401'));
+
+      await expect(subjectUnderTest.process(job(JobNameEnum.DISCOVER_SOURCES))).rejects.toThrow(UnrecoverableError);
     });
 
     it('refuses an unknown job for good', async () => {

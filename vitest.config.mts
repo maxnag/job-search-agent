@@ -24,7 +24,7 @@ export default defineConfig({
         '**/cli/**',
         '**/schema/**'
       ],
-      thresholds: { statements: 86, branches: 84, functions: 78, lines: 86 }
+      thresholds: { statements: 88, branches: 86, functions: 82, lines: 88 }
     },
     env: {
       NODE_ENV: 'test',

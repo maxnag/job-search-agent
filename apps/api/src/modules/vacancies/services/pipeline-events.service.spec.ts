@@ -99,4 +99,10 @@ describe('PipelineEventsService (unit)', () => {
 
     expect(notifyQueue.add).toHaveBeenCalledWith(JobNameEnum.SOURCE_BLOCKED, { sourceId: 1 });
   });
+
+  it('offers a company board the discovery found', async () => {
+    await subjectUnderTest.sourceCandidateProposed({ sourceCandidateId: 5 });
+
+    expect(notifyQueue.add).toHaveBeenCalledWith(JobNameEnum.SOURCE_CANDIDATE, { sourceCandidateId: 5 });
+  });
 });

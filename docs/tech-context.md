@@ -67,7 +67,7 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `APP_VERSION` | version reported by `/health`; set by the image build, `dev` otherwise |
 | `TZ` | time zone of the app process and of every container (`Asia/Jerusalem` / `Europe/Kyiv`); Postgres also gets it as `timezone`, so dates in the database show in local time |
 | `LOG_LEVEL` | `trace` … `fatal`, default `info` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint of Loki (`http://localhost:3100/otlp`); empty — stdout only |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint of Loki (`http://localhost:3100/otlp`; its port follows `LOKI_PORT`); empty — stdout only |
 | `LOKI_PORT`, `GRAFANA_PORT` | host ports of Loki and Grafana |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | Postgres container |
 | `DATABASE_URL`, `DATABASE_URL_TEST` | dev and test databases |
@@ -84,6 +84,7 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `JOB_ATTEMPTS`, `JOB_BACKOFF_MS` | attempts of a failed job and the first pause of its exponential backoff |
 | `HTTP_USER_AGENT`, `HTTP_TIMEOUT_MS` | User-Agent of a regular browser for every crawler request; timeout of an `html` request |
 | `CRAWL_DELAY_MIN_MS`, `CRAWL_DELAY_MAX_MS` | random pause after each request to a site; the minimum must not exceed the maximum |
+| `CRAWL_API_DELAY_MIN_MS`, `CRAWL_API_DELAY_MAX_MS` | the shorter pause before a request to a public job-board API (Greenhouse, Lever); the minimum must not exceed the maximum |
 | `ROBOTS_CACHE_TTL_MS` | how long a site's `robots.txt` is trusted before it is read again |
 | `RENDER_BROWSER_CHANNEL` | empty — Playwright's own browser; `chrome` \| `chrome-beta` \| `msedge` — one installed in the system |
 | `RENDER_MAX_SCROLLS`, `RENDER_TIMEOUT_MS`, `RENDER_SCROLL_WAIT_MS` | limits of a `rendered` page: scrolls, whole page, wait for new links after a scroll |
@@ -93,3 +94,8 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `VACANCY_TEXT_MAX_CHARS` | most characters of a vacancy page sent to the LLM |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | the owner's bot (`<bot id>:<secret>` from @BotFather) and the chat of the cards; both or neither — without them nothing is sent |
 | `NOTIFY_SWEEP_MINUTES` | how often cards not sent yet are picked up |
+| `BRAVE_SEARCH_API_KEY` | key of the Brave Search API for the discovery; empty — no discovery, the API runs without it |
+| `DISCOVER_MAX_QUERIES`, `DISCOVER_CRON` | most web search queries of one discovery run; its schedule (cron, server time) |
+| `DISCOVER_RECHECK_DAYS` | a board with no fitting position is checked again after this many days |
+| `DISCOVER_BOARD_TIMEOUT_MS` | limit of reading one board during the discovery |
+| `DISCOVER_MAX_CARDS` | most board cards waiting for the owner's decision at once |

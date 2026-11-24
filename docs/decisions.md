@@ -74,6 +74,10 @@ set by the owner: `html` — one request, the list is in the HTML; `rendered` �
 waits for the network and scrolls while the number of links grows. Filters written in the source URL cover the usual
 search forms. The agent and its recipe stay for sites whose list comes only as the answer to a form (ADR-017).
 
+**Amendment (2026-11-24):** an ATS board is no longer a branch of the agent. A board on Comeet, Greenhouse or Lever is
+a source of its own (`ats`), read by code through the system's public API (ADR-021); the agent never detects or
+drives it.
+
 ---
 
 ## ADR-005: Redis for BullMQ, Ollama on the host
@@ -372,3 +376,49 @@ links may point the crawler at the owner's machine or network (SSRF).
   request (DNS rebinding) and a redirect inside the browser are not caught before the request is made
 - (−) Agents with tools (the browser and mail agents) need more: a domain allowlist in the tool code, a step and
   budget limit, and their output treated as data checked by code
+
+---
+
+## ADR-021: ATS boards through their APIs, companies found by web search
+
+**Status:** Accepted
+
+**Context:** many companies, Israeli start-ups most of all, publish their vacancies on an applicant tracking system
+(Comeet, Greenhouse, Lever) instead of their own site. Each system has a public job-board API — the positions of one
+company, with country and work mode as fields — but none can search across companies. The owner cannot list every
+such company by hand.
+
+**Decision:**
+- **A board is a source** with `source_fetch_mode = 'ats'`; `source_url` is the canonical link of the board, and the
+  system and board are read from it — no new columns in `sources`. One client per system lists the positions and
+  reads one posting; its answer is checked by a Zod schema per position, and a board whose answer does not match
+  fails with `ATS_RESPONSE_INVALID`
+- **The requests go through the crawler** (ADR-017): `robots.txt`, the address guard, one request at a time per host
+  and a stop on 403 / 429 apply unchanged. A public API made for programs gets a shorter pause
+  (`CRAWL_API_DELAY_MIN_MS` … `CRAWL_API_DELAY_MAX_MS`); Comeet has no API without a company token, so its hosted page
+  is read with the pause of a site and the positions come from the JSON the page embeds
+- **The `listing` step stays** but reads only titles: role and level come from the LLM, country, city and work mode
+  from the system where it gives them. Positions in a country no profile searches are dropped by code before the LLM.
+  An extracted vacancy keeps the position id of the system (`vacancy_external_id`); its text comes from the posting
+  API, and a posting that is gone closes the vacancy
+- **The country is part of the dedup key:** one title of one company in two countries is two vacancies
+  (`vacancy_dedup_key` + `vacancy_dedup_country`; an unknown country joins the row of any country)
+- **Companies are found by code, decided by the owner.** `sources:add <link>` adds any board or career page by hand.
+  Discovery builds web search queries from the profiles (`site:<board domain> <country> "<role>"`, at most
+  `DISCOVER_MAX_QUERIES`, on `DISCOVER_CRON`), reduces each result URL to a board and keeps nothing else of the
+  results. A board not yet known is listed through its API and stored in `source_candidates` with what the system
+  answered: company, positions, how many pass the screening by company and place, a few examples. A board with a
+  passing position becomes a Telegram card with *Add as a source* / *Ignore*; at most `DISCOVER_MAX_CARDS` cards wait
+  for a decision. *Ignore* is final; a board with nothing passing is checked again after `DISCOVER_RECHECK_DAYS`
+- **No LLM in discovery,** and no key — no discovery: without `BRAVE_SEARCH_API_KEY` the schedule is removed with one
+  warning and the API runs as before
+
+**Consequences:**
+- (+) A board is read in one request without page noise; country and work mode are facts, not guesses
+- (+) The terms of the web search are kept: its results are never stored or logged — the database holds only what the
+  tracking system answered
+- (+) A new company reaches the owner as one card, and becomes a source only by the owner's press
+- (−) A company the search engine has not indexed, or one on another system (Workday, Ashby …), still needs
+  `sources:add` or a career page source
+- (−) The candidate count may be large; cards come in batches as the owner decides the open ones
+
