@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/maxnag/job-search-agent/compare/v0.5.1...v0.6.0) (2026-11-24)
+
+
+### Features
+
+* **api:** follow numbered pagination of a listing  ([#18](https://github.com/maxnag/job-search-agent/issues/18)) ([12723be](https://github.com/maxnag/job-search-agent/commit/12723bee43e6c08dbd0ae80c9702054c8f59bb90))
+
 ## [0.5.1](https://github.com/maxnag/job-search-agent/compare/v0.5.0...v0.5.1) (2026-11-24)
 
 
