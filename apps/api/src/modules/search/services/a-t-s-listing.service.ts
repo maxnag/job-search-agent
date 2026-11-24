@@ -100,7 +100,8 @@ export class ATSListingService {
   }
 
   /**
-   * Positions of a fetched board: the ones dropped by company and place as they are, the rest classified by the LLM
+   * Positions of a fetched board: the ones dropped by company and place as they are, the rest classified by the LLM.
+   * A board answers with the whole list, so it has no gaps
    *
    * @param {SourceRowType} source
    * @param {IATSListing} listing
@@ -137,7 +138,7 @@ export class ATSListingService {
       notPostings: kept.length - merged.length
     });
 
-    return { links: listed.length, positions: [...dropped, ...merged] };
+    return { links: listed.length, positions: [...dropped, ...merged], gaps: [] };
   }
 
   /**

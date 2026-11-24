@@ -29,4 +29,11 @@ export interface IFetchedPage {
    * @var {string}
    */
   readonly html: string;
+
+  /**
+   * True when a rendered page stopped scrolling while its links were still growing — the list may go on
+   *
+   * @var {boolean}
+   */
+  readonly partial?: boolean;
 }

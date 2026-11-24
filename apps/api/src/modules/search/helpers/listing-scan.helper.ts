@@ -121,7 +121,9 @@ function isPlanned(countries: ReadonlySet<string> | undefined, country: string):
  * What one scan writes: new positions are inserted at `listed` or `skipped`, known ones (by URL, then by the
  * company + title key within the country, from any source) are updated, open vacancies of the source not on the page
  * are closed, extracted ones due for a recheck are named. A page with no positions closes nothing — an empty answer is
- * more likely a broken page than a company with no vacancies
+ * more likely a broken page than a company with no vacancies. A listing with a gap closes nothing either: an open
+ * vacancy not on it may be on the part the scan did not see, so an extracted one due for a recheck has its own page
+ * read instead — the page decides whether it is closed
  *
  * @param {IListingScanRequest} request
  *
@@ -177,8 +179,15 @@ export function planListingScan(request: IListingScanRequest): IListingScanPlan 
     });
   }
 
-  const closeIds =
-    request.positions.length === 0 ? [] : request.open.filter(row => !seenIds.has(row.vacancy_id)).map(row => row.vacancy_id);
+  const unseen = request.open.filter(row => !seenIds.has(row.vacancy_id));
+
+  if (request.gaps.length > 0) {
+    recheckIds.push(...unseen.filter(row => isDueForRecheck(row, request.recheckBefore)).map(row => row.vacancy_id));
+
+    return { inserts, updates, closeIds: [], recheckIds };
+  }
+
+  const closeIds = request.positions.length === 0 ? [] : unseen.map(row => row.vacancy_id);
 
   return { inserts, updates, closeIds, recheckIds };
 }

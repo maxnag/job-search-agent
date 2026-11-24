@@ -1,3 +1,4 @@
+import type { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import type { IListedPosition } from './listed-position.interface.js';
 
 /**
@@ -17,4 +18,11 @@ export interface IListingExtraction {
    * @var {readonly IListedPosition[]}
    */
   readonly positions: readonly IListedPosition[];
+
+  /**
+   * Why the scan did not see the whole listing; empty when it did
+   *
+   * @var {readonly ListingGapEnum[]}
+   */
+  readonly gaps: readonly ListingGapEnum[];
 }

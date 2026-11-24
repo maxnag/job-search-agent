@@ -1,3 +1,4 @@
+import type { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import type { SourceScanOutcomeEnum } from '../enums/source-scan-outcome.enum.js';
 
 /**
@@ -59,4 +60,11 @@ export interface ISourceScanSummary {
    * @var {number}
    */
   readonly queued: number;
+
+  /**
+   * Why the listing was not seen whole — the reason nothing was closed; empty when it was
+   *
+   * @var {readonly ListingGapEnum[]}
+   */
+  readonly gaps: readonly ListingGapEnum[];
 }
