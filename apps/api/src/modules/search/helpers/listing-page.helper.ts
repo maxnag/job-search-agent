@@ -130,6 +130,38 @@ export function extractLinkCandidates(html: string, pageURL: string, maxLinks: n
 }
 
 /**
+ * The links of several pages of one list as one: one per URL — the one with text when a page has it without —, page
+ * order, at most `maxLinks`; cut short when a link is left after the limit or a page was cut short itself
+ *
+ * @param {readonly ILinkCandidates[]} pages Links of each page, in page order
+ * @param {number} maxLinks
+ *
+ * @returns {ILinkCandidates}
+ */
+export function mergeLinkCandidates(pages: readonly ILinkCandidates[], maxLinks: number): ILinkCandidates {
+  const byURL = new Map<string, ILinkCandidate>();
+  let truncated = pages.some(page => page.truncated);
+
+  for (const candidate of pages.flatMap(page => page.candidates)) {
+    const known = byURL.get(candidate.url);
+
+    if (known && (known.text !== '' || candidate.text === '')) {
+      continue;
+    }
+
+    if (!known && byURL.size >= maxLinks) {
+      truncated = true;
+
+      continue;
+    }
+
+    byURL.set(candidate.url, candidate);
+  }
+
+  return { candidates: [...byURL.values()], truncated };
+}
+
+/**
  * The prompt of the listing step: the page address and one numbered line per link; the URLs are left out when they
  * tell nothing more — the positions of a board are all postings
  *

@@ -8,19 +8,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LLMStepEnum, RoleFamilyEnum, SeniorityLevelEnum, WorkModeEnum } from '@job-agent/shared';
 
 import { createConfigMock } from '../../../../test/config-service.mock.js';
-import type { IFetchedPage } from '../../crawler/interfaces/fetched-page.interface.js';
 import { LLMClient } from '../../llm/clients/l-l-m.client.js';
 import { ListingGapEnum } from '../enums/listing-gap.enum.js';
+import type { IListingLinks } from '../interfaces/listing-links.interface.js';
 import { type VacancyListingType, vacancyListingSchema } from '../schemas/vacancy-listing.schema.js';
 import { ListingExtractionService } from './listing-extraction.service.js';
 
 const PROMPT_URL = new URL('../prompts/vacancy-listing.md', import.meta.url);
 
-const PAGE: IFetchedPage = {
+const LISTING: IListingLinks = {
   url: 'https://careers.example.com/jobs',
-  status: 200,
-  headers: {},
-  html: '<ul><li><a href="/jobs/1">Senior Backend Developer</a></li><li><a href="/jobs/2">QA Engineer</a></li><li><a href="/about">About</a></li></ul>'
+  pages: 2,
+  candidates: [
+    { url: 'https://careers.example.com/jobs/1', text: 'Senior Backend Developer', context: '' },
+    { url: 'https://careers.example.com/jobs/2', text: 'QA Engineer', context: '' },
+    { url: 'https://careers.example.com/about', text: 'About', context: '' }
+  ],
+  gaps: []
 };
 
 /**
@@ -73,9 +77,10 @@ describe('ListingExtractionService (unit)', () => {
   it('asks the listing step with the numbered links fenced as data and maps the numbers back to URLs', async () => {
     llm.generateBySchema.mockResolvedValue({ data: { positions: [listed()] }, model: 'claude-haiku-5-5' });
 
-    const result = await subjectUnderTest.extract(PAGE, 'Northwind');
+    const result = await subjectUnderTest.extract(LISTING, 'Northwind');
 
     expect(result).toEqual({
+      pages: 2,
       links: 3,
       positions: [
         {
@@ -99,39 +104,25 @@ describe('ListingExtractionService (unit)', () => {
     expect(request?.prompt.endsWith('\n</links>')).toBe(true);
   });
 
-  it('costs no LLM call for a page without links', async () => {
-    await expect(subjectUnderTest.extract({ ...PAGE, html: '<p>No openings</p>' }, 'Northwind')).resolves.toEqual({
-      links: 0,
-      positions: [],
-      gaps: []
-    });
+  it('costs no LLM call for a listing without links and keeps its gaps', async () => {
+    await expect(
+      subjectUnderTest.extract({ ...LISTING, pages: 1, candidates: [], gaps: [ListingGapEnum.PAGINATION] }, 'Northwind')
+    ).resolves.toEqual({ pages: 1, links: 0, positions: [], gaps: [ListingGapEnum.PAGINATION] });
     expect(llm.generateBySchema).not.toHaveBeenCalled();
   });
 
-  it('reports pagination, the link limit and a partial scroll as gaps, in that order', async () => {
-    llm.generateBySchema.mockResolvedValue({ data: { positions: [] }, model: 'm' });
+  it('passes the gaps of the listing on with its positions', async () => {
+    llm.generateBySchema.mockResolvedValue({ data: { positions: [listed()] }, model: 'm' });
 
-    const links = Array.from({ length: 101 }, (_, index) => `<a href="/jobs/${index}">Job ${index}</a>`).join('');
-    const html = `${links}<a rel="next" href="/jobs?page=2">Next</a>`;
-
-    await expect(subjectUnderTest.extract({ ...PAGE, html, partial: true }, 'Northwind')).resolves.toMatchObject({
-      links: 100,
-      gaps: [ListingGapEnum.PAGINATION, ListingGapEnum.LINK_LIMIT, ListingGapEnum.SCROLL_LIMIT]
-    });
-  });
-
-  it('reports the gaps of a page without links too', async () => {
-    await expect(subjectUnderTest.extract({ ...PAGE, html: '<button>Load more</button>' }, 'Northwind')).resolves.toEqual({
-      links: 0,
-      positions: [],
-      gaps: [ListingGapEnum.PAGINATION]
-    });
+    await expect(
+      subjectUnderTest.extract({ ...LISTING, gaps: [ListingGapEnum.LINK_LIMIT, ListingGapEnum.SCROLL_LIMIT] }, 'Northwind')
+    ).resolves.toMatchObject({ links: 3, gaps: [ListingGapEnum.LINK_LIMIT, ListingGapEnum.SCROLL_LIMIT] });
   });
 
   it('keeps the company the page names for a posting', async () => {
     llm.generateBySchema.mockResolvedValue({ data: { positions: [listed({ company: ' Contoso ' })] }, model: 'm' });
 
-    const { positions } = await subjectUnderTest.extract(PAGE, 'Job Board');
+    const { positions } = await subjectUnderTest.extract(LISTING, 'Job Board');
 
     expect(positions[0]?.company).toBe('Contoso');
   });
@@ -144,7 +135,7 @@ describe('ListingExtractionService (unit)', () => {
       model: 'm'
     });
 
-    const { positions } = await subjectUnderTest.extract(PAGE, 'Northwind');
+    const { positions } = await subjectUnderTest.extract(LISTING, 'Northwind');
 
     expect(positions.map(position => position.title)).toEqual(['QA Engineer']);
   });
@@ -155,7 +146,7 @@ describe('ListingExtractionService (unit)', () => {
       model: 'm'
     });
 
-    const [position] = (await subjectUnderTest.extract(PAGE, 'Northwind')).positions;
+    const [position] = (await subjectUnderTest.extract(LISTING, 'Northwind')).positions;
 
     expect([position?.title.length, position?.company.length, position?.city?.length]).toEqual([200, 120, 80]);
   });
@@ -163,7 +154,7 @@ describe('ListingExtractionService (unit)', () => {
   it('passes an invalid answer of the LLM on', async () => {
     llm.generateBySchema.mockRejectedValue(new Error('LLM_OUTPUT_SCHEMA_INVALID: positions'));
 
-    await expect(subjectUnderTest.extract(PAGE, 'Northwind')).rejects.toThrow('LLM_OUTPUT_SCHEMA_INVALID');
+    await expect(subjectUnderTest.extract(LISTING, 'Northwind')).rejects.toThrow('LLM_OUTPUT_SCHEMA_INVALID');
   });
 
   it('keeps the bytes of the prompt (golden snapshot)', async () => {

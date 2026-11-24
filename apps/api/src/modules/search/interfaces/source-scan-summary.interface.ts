@@ -20,7 +20,14 @@ export interface ISourceScanSummary {
   readonly outcome: SourceScanOutcomeEnum;
 
   /**
-   * Links on the page
+   * Pages of the listing read
+   *
+   * @var {number}
+   */
+  readonly pages: number;
+
+  /**
+   * Links on the pages
    *
    * @var {number}
    */

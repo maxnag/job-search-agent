@@ -89,6 +89,7 @@ export const envSchema = z
 
     SEARCH_INTERVAL_HOURS: positiveInt().default(3),
     SEARCH_JITTER_MINUTES: z.coerce.number().int().nonnegative().default(30),
+    LISTING_MAX_PAGES: positiveInt().default(10),
     LISTING_MAX_LINKS: positiveInt().default(500),
     LISTING_BATCH_SIZE: positiveInt().default(100),
     VACANCY_RECHECK_HOURS: positiveInt().default(24),

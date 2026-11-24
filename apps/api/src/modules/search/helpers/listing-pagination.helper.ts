@@ -1,4 +1,4 @@
-import { type CheerioAPI, load } from 'cheerio';
+import { type Cheerio, type CheerioAPI, load } from 'cheerio';
 
 import { HIDDEN_CONTENT } from '../../crawler/helpers/hidden-content.helper.js';
 import type { IListingPagination } from '../interfaces/listing-pagination.interface.js';
@@ -9,7 +9,18 @@ import { resolveLink } from './listing-page.helper.js';
  *
  * @type {ReadonlySet<string>}
  */
-const PAGE_PARAMS: ReadonlySet<string> = new Set(['page', 'p', 'pg', 'pagenumber']);
+const PAGE_PARAMS: ReadonlySet<string> = new Set([
+  'page',
+  'p',
+  'pg',
+  'pagenumber',
+  'paged',
+  'pageindex',
+  'page_no',
+  'pageno',
+  'pn',
+  'currentpage'
+]);
 
 /**
  * Query parameters that count the positions skipped before a page, lower-cased
@@ -38,6 +49,27 @@ const PATH_MARK = '/page/';
  * @type {RegExp}
  */
 const DIGITS = /^\d+$/;
+
+/**
+ * Text of a page number in a row of numbers — up to three digits, so a row of years is not a pagination
+ *
+ * @type {RegExp}
+ */
+const PAGE_NUMBER_TEXT = /^\d{1,3}$/;
+
+/**
+ * Numbers a row needs to be a pagination — one number alone is a footnote or a badge
+ *
+ * @type {number}
+ */
+const MIN_ROW_NUMBERS = 2;
+
+/**
+ * Elements that mark the current page, unless they say `false`
+ *
+ * @type {string}
+ */
+const CURRENT_PAGE = '[aria-current]:not([aria-current="false" i])';
 
 /**
  * Text of a link or a button that loads the rest of the list, lower-cased, without the marks around the words
@@ -97,22 +129,61 @@ const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const REL_NEXT = 'a[rel~="next" i][href], link[rel~="next" i][href]';
 
 /**
- * A link of the same origin that numbers a page, and by how many pages it is ahead of the current one
+ * Elements selected by cheerio, as its traversal returns them — cheerio does not export the element type itself
  */
-interface IPageLink {
+type ElementSelection = ReturnType<Cheerio<never>['parent']>;
+
+/**
+ * A sign of pagination of one kind, and the address of the next page it gives
+ */
+interface IPaginationSign {
   /**
-   * Absolute address of the link
+   * True when the page has the sign
+   *
+   * @var {boolean}
+   */
+  readonly found: boolean;
+
+  /**
+   * Address of the next page, of the same origin; absent when the sign gives none
    *
    * @var {string}
    */
-  readonly url: string;
+  readonly nextURL?: string;
+}
 
+/**
+ * An element of a row of page numbers
+ */
+interface IRowNumber {
   /**
-   * Pages it is ahead of the current one; an offset counts positions, not pages
+   * The number it shows
    *
    * @var {number}
    */
-  readonly ahead: number;
+  readonly number: number;
+
+  /**
+   * Address of the page it leads to, of the same origin, other than the current page; absent for the current page and
+   * for a number only a script follows
+   *
+   * @var {string}
+   */
+  readonly url?: string;
+
+  /**
+   * True when it is a link or a button — a number a reader can click
+   *
+   * @var {boolean}
+   */
+  readonly clickable: boolean;
+
+  /**
+   * True when it is marked as the current page
+   *
+   * @var {boolean}
+   */
+  readonly current: boolean;
 }
 
 /**
@@ -132,25 +203,6 @@ interface IPhrasedElement {
    * @var {string}
    */
   readonly href?: string;
-}
-
-/**
- * What the `rel="next"` links of a page say
- */
-interface IRelNext {
-  /**
-   * True when the page has such a link, of any origin
-   *
-   * @var {boolean}
-   */
-  readonly found: boolean;
-
-  /**
-   * Address of the first one of the same origin
-   *
-   * @var {string}
-   */
-  readonly nextURL?: string;
 }
 
 /**
@@ -205,14 +257,16 @@ function currentNumber(key: string, current: ReadonlyMap<string, number>, linked
 }
 
 /**
- * Links of the same origin with a page number or an offset past the current page; the closest one first
+ * Links of the same origin with a page number or an offset past the current page. The next page is the closest of
+ * them that may be followed: a page number only one page ahead — a farther one would skip a page, and `?p=<id>` of
+ * WordPress is a post, not a page; an offset any step ahead — it counts positions, not pages
  *
  * @param {CheerioAPI} $
  * @param {URL} page
  *
- * @returns {IPageLink[]}
+ * @returns {IPaginationSign}
  */
-function pageLinks($: CheerioAPI, page: URL): IPageLink[] {
+function pageLinks($: CheerioAPI, page: URL): IPaginationSign {
   const links = $('a[href]')
     .toArray()
     .map(element => resolveLink($(element).attr('href'), page.href))
@@ -224,13 +278,26 @@ function pageLinks($: CheerioAPI, page: URL): IPageLink[] {
     .filter(link => link.marks.size > 0);
   const current = pageMarks(page);
   const linked = links.map(link => link.marks);
-  const ahead = links.flatMap(link => {
-    const steps = [...link.marks].map(([key, number]) => number - currentNumber(key, current, linked)).filter(step => step > 0);
+  let found = false;
+  let next: { readonly url: string; readonly ahead: number } | undefined;
 
-    return steps.length > 0 ? [{ url: link.url.href, ahead: Math.min(...steps) }] : [];
-  });
+  for (const link of links) {
+    for (const [key, number] of link.marks) {
+      const ahead = number - currentNumber(key, current, linked);
 
-  return ahead.sort((left, right) => left.ahead - right.ahead);
+      if (ahead <= 0) {
+        continue;
+      }
+
+      found = true;
+
+      if ((OFFSET_PARAMS.has(key) || ahead === 1) && (!next || ahead < next.ahead)) {
+        next = { url: link.url.href, ahead };
+      }
+    }
+  }
+
+  return { found, nextURL: next?.url };
 }
 
 /**
@@ -239,9 +306,9 @@ function pageLinks($: CheerioAPI, page: URL): IPageLink[] {
  * @param {CheerioAPI} $
  * @param {URL} page
  *
- * @returns {IRelNext}
+ * @returns {IPaginationSign}
  */
-function relNext($: CheerioAPI, page: URL): IRelNext {
+function relNext($: CheerioAPI, page: URL): IPaginationSign {
   const links = $(REL_NEXT).toArray();
 
   for (const element of links) {
@@ -331,27 +398,156 @@ function nextByText($: CheerioAPI, page: URL): string | undefined {
 }
 
 /**
- * True when a visible link or button loads the rest of the list ("Load more"), or a visible button names the next page
+ * True when a link or a button loads the rest of the list ("Load more"), or a button names the next page; the hidden
+ * ones are removed before
  *
  * @param {CheerioAPI} $
  *
  * @returns {boolean}
  */
 function hasMoreButton($: CheerioAPI): boolean {
-  $(HIDDEN_CONTENT).remove();
-
   const loadsMore = phrases($, 'a, button').some(element => LOAD_MORE_PHRASES.has(element.phrase));
 
   return loadsMore || phrases($, 'button').some(element => NEXT_PAGE_PHRASES.includes(element.phrase));
 }
 
 /**
+ * The item of a row an element stands for: the element, or its wrapper when it is the wrapper's only child — the
+ * `li` of a `li > a`
+ *
+ * @param {ElementSelection} node
+ *
+ * @returns {ElementSelection}
+ */
+function rowItem(node: ElementSelection): ElementSelection {
+  let item = node;
+
+  while (item.parent().length > 0 && item.parent().children().length === 1 && !item.parent().is('body')) {
+    item = item.parent();
+  }
+
+  return item;
+}
+
+/**
+ * True when an address may name the page a row number shows: it carries no page number, or the same one — or one
+ * less, for a list counted from 0
+ *
+ * @param {string} url
+ * @param {number} number
+ *
+ * @returns {boolean}
+ */
+function addressMatches(url: string, number: number): boolean {
+  const parsed = URL.parse(url);
+
+  if (!parsed) {
+    return false;
+  }
+
+  return [...pageMarks(parsed)].filter(([key]) => !OFFSET_PARAMS.has(key)).every(([, mark]) => mark === number || mark === number - 1);
+}
+
+/**
+ * The page number an item of a row shows, with where it leads; undefined when the item shows no number
+ *
+ * @param {ElementSelection} item
+ * @param {URL} page
+ *
+ * @returns {IRowNumber | undefined}
+ */
+function rowNumber(item: ElementSelection, page: URL): IRowNumber | undefined {
+  const phrase = phraseOf(item.text(), item.attr('aria-label') ?? item.attr('title'));
+
+  if (!PAGE_NUMBER_TEXT.test(phrase)) {
+    return undefined;
+  }
+
+  const number = +phrase;
+  const control = item.is('a, button') ? item : item.find('a, button').first();
+  const href = resolveLink(control.attr('href'), page.href);
+  const url = href && URL.parse(href)?.origin === page.origin && addressMatches(href, number) ? href : undefined;
+  const current = item.is(CURRENT_PAGE) || item.find(CURRENT_PAGE).length > 0;
+
+  return { number, url, clickable: control.length > 0, current };
+}
+
+/**
+ * Rows of page numbers — the items under one parent that show a number, two or more
+ *
+ * @param {CheerioAPI} $
+ * @param {URL} page
+ *
+ * @returns {IRowNumber[][]}
+ */
+function numberRows($: CheerioAPI, page: URL): IRowNumber[][] {
+  const parents = new Set(
+    $('a, button')
+      .toArray()
+      .flatMap(element => rowItem($(element)).parent().toArray())
+  );
+
+  return [...parents]
+    .map(parent =>
+      $(parent)
+        .children()
+        .toArray()
+        .flatMap(child => rowNumber($(child), page) ?? [])
+    )
+    .filter(row => row.length >= MIN_ROW_NUMBERS);
+}
+
+/**
+ * Pagination drawn as a row of numbers — "1 2 3 … 10" — whatever the addresses look like. The current page is the
+ * number marked `aria-current`, else the number that is no link, else 1; the next page is the number after it. A row
+ * whose numbers lead nowhere a crawler can follow — buttons or links without an address — is only a sign: a script
+ * turns its pages
+ *
+ * @param {CheerioAPI} $
+ * @param {URL} page
+ *
+ * @returns {IPaginationSign}
+ */
+function rowPagination($: CheerioAPI, page: URL): IPaginationSign {
+  let found = false;
+
+  for (const row of numberRows($, page)) {
+    const linked = row.filter(item => item.url !== undefined);
+
+    if (linked.length === 0) {
+      found ||= row.filter(item => item.clickable).length >= MIN_ROW_NUMBERS;
+
+      continue;
+    }
+
+    const currentNumber = (row.find(item => item.current) ?? row.find(item => item.url === undefined))?.number ?? 1;
+
+    if (!row.some(item => item.number > currentNumber)) {
+      continue;
+    }
+
+    found = true;
+
+    const next = linked.find(item => item.number === currentNumber + 1);
+
+    if (next?.url) {
+      return { found, nextURL: next.url };
+    }
+  }
+
+  return { found };
+}
+
+/**
  * Pagination of a listing page, or undefined when the page shows the whole list. Signs, any of them: a `rel="next"`
  * link; a link of the same origin whose text says "Next" (English, Hebrew, Ukrainian); a link of the same origin — any
- * path — with a page number or an offset past the current page, or a path ending in `/page/<N>`; a visible link or
- * button such as "Load more", or a button that says "Next page". The next page is the one `rel="next"` names, else the
- * "Next" link, else the closest numbered one; a button gives no address. A false sign only delays a closing until the
- * vacancy page is read, a missed one closes a vacancy that is open — so the signs are wide
+ * path — with a page number or an offset past the current page, or a path ending in `/page/<N>`; a visible row of two
+ * or more page numbers with one past the current page, or of numbered buttons; a visible link or button such as
+ * "Load more", or a button that says "Next page". The next page is the one `rel="next"` names, else the "Next" link,
+ * else the numbered link one page ahead (an offset — the closest ahead), else the number after the current one in a
+ * row; a button gives no address, nor does a page number further ahead — following it would skip a page. A false sign
+ * only delays a closing until the vacancy page is read, a missed one closes a vacancy that is open — so the signs are
+ * wide, and the address narrow
  *
  * @param {string} html
  * @param {string} pageURL
@@ -367,12 +563,17 @@ export function findPagination(html: string, pageURL: string): IListingPaginatio
 
   const $ = load(html);
   const rel = relNext($, page);
-  const [closest] = pageLinks($, page);
-  const nextURL = rel.nextURL ?? nextByText($, page) ?? closest?.url;
+  const byText = nextByText($, page);
+  const numbered = pageLinks($, page);
+
+  $(HIDDEN_CONTENT).remove();
+
+  const row = rowPagination($, page);
+  const nextURL = rel.nextURL ?? byText ?? numbered.nextURL ?? row.nextURL;
 
   if (nextURL) {
     return { nextURL };
   }
 
-  return rel.found || hasMoreButton($) ? {} : undefined;
+  return rel.found || numbered.found || row.found || hasMoreButton($) ? {} : undefined;
 }
