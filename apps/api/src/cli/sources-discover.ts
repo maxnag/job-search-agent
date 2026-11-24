@@ -1,5 +1,3 @@
-import { parseArgs } from 'node:util';
-
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import 'reflect-metadata';
@@ -11,11 +9,32 @@ import type { IDiscoveryProgress } from '../modules/discovery/interfaces/discove
 import type { IDiscoveredBoard, IDiscoverySummary } from '../modules/discovery/interfaces/discovery-summary.interface.js';
 import { DiscoveryOrchestrator } from '../modules/discovery/services/discovery.orchestrator.js';
 import { paint } from '../modules/report/helpers/terminal-style.helper.js';
-import { ScanCLIModule } from './scan-cli.module.js';
+import { readCLI } from './helpers/c-l-i-args.helper.js';
+import type { ICLISpec } from './helpers/interfaces/c-l-i-spec.interface.js';
+
+/**
+ * Options and help of the command
+ *
+ * @type {ICLISpec}
+ */
+const SPEC: ICLISpec = {
+  command: 'sources:discover',
+  summary:
+    'Find company boards on ATS sites by a web search built from the profiles, read each board found and offer the ones with fitting positions as Telegram cards.',
+  options: [{ name: 'dry-run', description: 'Search and read the boards, but store nothing and queue no card' }],
+  examples: [
+    { args: '--dry-run', description: 'See which boards a run would offer' },
+    { args: '', description: 'Offer the boards found as cards: Add as a source / Ignore' }
+  ],
+  notes: [
+    'Needs BRAVE_SEARCH_API_KEY in .env. Search results are never stored — only the boards they lead to.',
+    'Cards are sent by the running API (pnpm api:dev).'
+  ]
+};
 
 const logger = new Logger('SourcesDiscover');
-const { values } = parseArgs({ options: { 'dry-run': { type: 'boolean', default: false } } });
-const dryRun = values['dry-run'];
+const args = readCLI(SPEC);
+const dryRun = args?.flags.has('dry-run') ?? false;
 
 /**
  * A progress line on stderr — the report itself goes to stdout
@@ -65,20 +84,23 @@ function report(summary: IDiscoverySummary): string {
   return [totals, ...boards.map(board => boardLine(board)), ...cards, footer].join('\n') + '\n';
 }
 
-const app = await NestFactory.createApplicationContext(ScanCLIModule, { logger: ['error', 'warn'] });
+if (args) {
+  const { ScanCLIModule } = await import('./scan-cli.module.js');
+  const app = await NestFactory.createApplicationContext(ScanCLIModule, { logger: ['error', 'warn'] });
 
-try {
-  const discovery = app.get(DiscoveryOrchestrator);
+  try {
+    const discovery = app.get(DiscoveryOrchestrator);
 
-  if (discovery.isEnabled()) {
-    process.stdout.write(report(await discovery.discover(dryRun, showProgress)));
-  } else {
-    process.stderr.write('Discovery is off: set BRAVE_SEARCH_API_KEY in .env.\n');
+    if (discovery.isEnabled()) {
+      process.stdout.write(report(await discovery.discover(dryRun, showProgress)));
+    } else {
+      process.stderr.write('Discovery is off: set BRAVE_SEARCH_API_KEY in .env.\n');
+      process.exitCode = 1;
+    }
+  } catch (error) {
+    logger.error(error instanceof Error ? error.message : 'Discovery failed');
     process.exitCode = 1;
+  } finally {
+    await app.close();
   }
-} catch (error) {
-  logger.error(error instanceof Error ? error.message : 'Discovery failed');
-  process.exitCode = 1;
-} finally {
-  await app.close();
 }

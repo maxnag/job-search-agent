@@ -1,5 +1,3 @@
-import { parseArgs } from 'node:util';
-
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import 'reflect-metadata';
@@ -7,12 +5,30 @@ import 'reflect-metadata';
 import { paint } from '../modules/report/helpers/terminal-style.helper.js';
 import type { ISourceRegistrationResult } from '../modules/search/interfaces/source-registration.interface.js';
 import { SourceRegistrationService } from '../modules/search/services/source-registration.service.js';
-import { ScanCLIModule } from './scan-cli.module.js';
+import { readCLI } from './helpers/c-l-i-args.helper.js';
+import type { ICLISpec } from './helpers/interfaces/c-l-i-spec.interface.js';
 
-const USAGE = 'Usage: pnpm sources:add <url> [--name <company>]\n';
+/**
+ * Arguments, options and help of the command
+ *
+ * @type {ICLISpec}
+ */
+const SPEC: ICLISpec = {
+  command: 'sources:add',
+  summary:
+    'Add a career page or an ATS board (Comeet, Greenhouse, Lever) as a source. A board is read once to show how many positions pass the screening.',
+  arguments: [{ name: 'url', description: 'Career page, or any link to a board or one of its positions', required: true }],
+  options: [{ name: 'name', value: 'company', description: 'Company name — by default the board names it, or the host of the page' }],
+  examples: [
+    { args: 'https://careers.example.com/jobs', description: 'Add a career page' },
+    { args: 'https://boards.greenhouse.io/northwind --name Northwind', description: 'Add a Greenhouse board under a name' }
+  ],
+  notes: ['A URL that is already a source is not added twice — the command names the source.']
+};
+
 const logger = new Logger('SourcesAdd');
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { name: { type: 'string' } } });
-const [url] = positionals;
+const args = readCLI(SPEC);
+const [url] = args?.positionals ?? [];
 
 /**
  * Lines that tell the owner what adding the source did
@@ -48,14 +64,12 @@ function resultLines(result: ISourceRegistrationResult): string {
   return lines.join('\n') + '\n';
 }
 
-if (!url || positionals.length > 1) {
-  process.stderr.write(USAGE);
-  process.exitCode = 1;
-} else {
+if (url !== undefined) {
+  const { ScanCLIModule } = await import('./scan-cli.module.js');
   const app = await NestFactory.createApplicationContext(ScanCLIModule, { logger: ['error', 'warn'] });
 
   try {
-    process.stdout.write(resultLines(await app.get(SourceRegistrationService).add({ url, name: values.name })));
+    process.stdout.write(resultLines(await app.get(SourceRegistrationService).add({ url, name: args?.values.name?.[0] })));
   } catch (error) {
     logger.error(error instanceof Error ? error.message : 'Adding the source failed');
     process.exitCode = 1;

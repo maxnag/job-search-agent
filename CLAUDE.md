@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `b012641` (career pages on ATS boards and company discovery)
-> Run `git log b012641..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `52b7b63` (command help, typo hints and report filters)
+> Run `git log 52b7b63..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -83,11 +83,12 @@ docker compose up -d                   # postgres, redis, loki, grafana (http://
 pnpm install                           # respects minimumReleaseAge (7 days)
 pnpm db:migrate && pnpm db:migrate:test  # apply migrations to the dev and the test database
 pnpm db:seed                           # reference data and default llm_settings, idempotent; db:seed:dev — demo data
+# every command below: --help for its options and examples, needs neither the database nor Redis
 pnpm cv:import <file> --profile <name> # resume → new version of a profile (PDF); prints the profile, re-matches vacancies
 pnpm sources:add <url> [--name <company>]  # add a career page or an ATS board (any link to it); a board is read once
 pnpm sources:discover [--dry-run]      # find ATS boards by web search, cards to Telegram; --dry-run stores nothing
 pnpm sources:scan [--source <id>] [--force]  # scan career pages now; the running API extracts what was queued
-pnpm vacancies:report [--source <id>]  # every position with its stage and reason — check the filters drop nothing
+pnpm vacancies:report [options]        # positions with stage and reason; filters by source, stage, verdict, reason, …
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
 pnpm api:start                         # build, then the API without watch (the owner's Mac)

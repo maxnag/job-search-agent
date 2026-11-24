@@ -1,5 +1,3 @@
-import { parseArgs } from 'node:util';
-
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import 'reflect-metadata';
@@ -10,12 +8,38 @@ import { SourceScanOutcomeEnum } from '../modules/search/enums/source-scan-outco
 import type { ISourceScanSummary } from '../modules/search/interfaces/source-scan-summary.interface.js';
 import { SourceRepository } from '../modules/search/repositories/source.repository.js';
 import { SourceScanOrchestrator } from '../modules/search/services/source-scan.orchestrator.js';
-import { ScanCLIModule } from './scan-cli.module.js';
+import { readCLI } from './helpers/c-l-i-args.helper.js';
+import type { ICLISpec } from './helpers/interfaces/c-l-i-spec.interface.js';
 
-const USAGE = 'Usage: pnpm sources:scan [--source <id>] [--force]\n';
+/**
+ * Options and help of the command
+ *
+ * @type {ICLISpec}
+ */
+const SPEC: ICLISpec = {
+  command: 'sources:scan',
+  summary:
+    'Scan career pages now: read each listing, pick and screen the vacancy links and queue the new ones for extraction. Without --source — every switched-on source the crawler has not stopped.',
+  options: [
+    { name: 'source', value: 'id', description: 'Scan only this source', integer: true },
+    {
+      name: 'force',
+      description: 'Scan a source the crawler stopped or the owner switched off; without --source, every switched-on one'
+    }
+  ],
+  examples: [
+    { args: '', description: 'Scan the sources the schedule would' },
+    { args: '--source 7', description: 'Scan one source' },
+    { args: '--source 7 --force', description: 'Scan a source again after it was stopped (403, 429, captcha)' }
+  ],
+  notes: ['The queued vacancies are extracted by the running API — start it with pnpm api:dev.']
+};
+
 const logger = new Logger('SourcesScan');
-const { values } = parseArgs({ options: { source: { type: 'string' }, force: { type: 'boolean', default: false } } });
-const sourceId = values.source === undefined ? undefined : +values.source;
+const args = readCLI(SPEC);
+const force = args?.flags.has('force') ?? false;
+const source = args?.values.source?.[0];
+const sourceId = source === undefined ? undefined : +source;
 
 /**
  * Color of every outcome of a scan
@@ -64,14 +88,12 @@ async function sourceIds(sources: SourceRepository, force: boolean): Promise<num
   return rows.map(source => source.source_id);
 }
 
-if (sourceId !== undefined && !Number.isInteger(sourceId)) {
-  process.stderr.write(USAGE);
-  process.exitCode = 1;
-} else {
+if (args) {
+  const { ScanCLIModule } = await import('./scan-cli.module.js');
   const app = await NestFactory.createApplicationContext(ScanCLIModule, { logger: ['error', 'warn'] });
 
   try {
-    const ids = sourceId === undefined ? await sourceIds(app.get(SourceRepository), values.force) : [sourceId];
+    const ids = sourceId === undefined ? await sourceIds(app.get(SourceRepository), force) : [sourceId];
 
     if (ids.length === 0) {
       process.stdout.write('No source to scan. Add career pages to the sources table, switch them on, or pass --force.\n');
@@ -79,7 +101,7 @@ if (sourceId !== undefined && !Number.isInteger(sourceId)) {
 
     for (const id of ids) {
       try {
-        process.stdout.write(summaryLine(await app.get(SourceScanOrchestrator).scan({ sourceId: id, force: values.force })));
+        process.stdout.write(summaryLine(await app.get(SourceScanOrchestrator).scan({ sourceId: id, force })));
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
 

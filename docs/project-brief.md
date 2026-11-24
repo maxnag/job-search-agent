@@ -43,7 +43,8 @@ with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops t
    excluded cities and companies. A position nobody wants is kept as `skipped` with the reason (ADR-018)
 3. **Extraction** of the rest, then matching and a Telegram card on each event (ADR-019)
 
-`pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason.
+`pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason —
+filtered by source, stage, verdict, reason, place and age, or as a summary per source (`--help` lists the options).
 
 ### ATS boards and discovery
 

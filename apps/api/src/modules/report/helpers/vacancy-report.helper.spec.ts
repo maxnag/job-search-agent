@@ -144,6 +144,64 @@ describe('formatVacancyReport', () => {
     expect(widths[0]).toBeLessThanOrEqual(120);
   });
 
+  it('names the hidden closed positions when no filter is given', () => {
+    expect(
+      formatVacancyReport(data([vacancy()]))
+        .trimEnd()
+        .split('\n')
+        .at(-2)
+    ).toBe('Filter: closed hidden (--closed shows them)');
+  });
+
+  it('names every filter applied above the totals', () => {
+    const filter = {
+      sourceIds: [1, 3],
+      stages: [VacancyStageEnum.EXTRACTED, VacancyStageEnum.CLOSED],
+      verdicts: [VacancyMatchVerdictEnum.FIT],
+      reason: 'hebrew',
+      country: 'il',
+      workMode: WorkModeEnum.HYBRID,
+      title: 'backend',
+      sinceDays: 7,
+      limit: 20
+    };
+
+    expect(
+      formatVacancyReport(data([vacancy()]), filter)
+        .trimEnd()
+        .split('\n')
+        .at(-2)
+    ).toBe(
+      'Filter: source #1, #3 · stage extracted, closed · verdict fit · reason contains "hebrew" · country IL · work mode hybrid · ' +
+        'title contains "backend" · first seen in the last 7 days · newest 20 per source · closed shown'
+    );
+  });
+
+  it('shows the counts of each source instead of its table in a summary', () => {
+    const lines = formatVacancyReport(data([vacancy(), vacancy({ vacancyId: 8, stage: VacancyStageEnum.SKIPPED })]), {}, true).split('\n');
+
+    expect(lines.some(line => line.includes('│'))).toBe(false);
+    expect(lines[2]).toBe('2 positions — listed 0 · skipped 1 · extracted 1 · closed 0   verdicts: fit 1 · almost 0 · no_fit 0');
+  });
+
+  it('hides the sources a filter on positions left empty, and keeps them for a filter on sources only', () => {
+    const report = data([vacancy()]);
+    const empty = { ...report, sources: [...report.sources, { ...SOURCE, sourceId: 2, name: 'Contoso' }] };
+
+    expect(formatVacancyReport(empty, { stages: [VacancyStageEnum.EXTRACTED] })).not.toContain('Contoso');
+    expect(formatVacancyReport(empty, { sourceIds: [1, 2] })).toContain('Contoso');
+  });
+
+  it('says nothing matched when a filter on positions leaves every source empty, and gives no hint', () => {
+    const report = formatVacancyReport(data([]), { title: 'designer' });
+
+    expect(report).toContain('No position matches the filter.');
+    expect(report).not.toContain('Northwind');
+    expect(formatVacancyReport(data([vacancy({ stage: VacancyStageEnum.CLOSED })]), { closed: true, title: 'backend' })).not.toContain(
+      'Hint:'
+    );
+  });
+
   it('keeps a table readable on a narrow terminal and in a pipe', () => {
     process.stdout.columns = 40;
     expect(formatVacancyReport(data([vacancy()])).split('\n')[2]?.length).toBe(80);
