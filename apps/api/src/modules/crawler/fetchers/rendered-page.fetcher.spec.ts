@@ -130,6 +130,7 @@ describe('RenderedPageFetcher (unit)', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await moduleFixture.close();
   });
 
@@ -146,7 +147,8 @@ describe('RenderedPageFetcher (unit)', () => {
         url: 'https://careers.example.com/jobs',
         status: 200,
         headers: { 'content-type': 'text/html' },
-        html: '<html>rendered</html>'
+        html: '<html>rendered</html>',
+        partial: false
       });
       expect(launch).toHaveBeenCalledWith({ headless: true, channel: BrowserChannelEnum.CHROME });
       expect(browser.newContext).toHaveBeenCalledWith({ userAgent: USER_AGENT, locale: 'en-US' });
@@ -213,12 +215,36 @@ describe('RenderedPageFetcher (unit)', () => {
       expect(page.waitForFunction).toHaveBeenCalledWith("document.querySelectorAll('a[href]').length > 5", undefined, { timeout: 100 });
     });
 
-    it('scrolls no more than the configured number of times', async () => {
+    it('scrolls no more than the configured number of times, and calls the page partial when links still grew', async () => {
       page.waitForFunction.mockResolvedValue(undefined);
 
-      await subjectUnderTest.fetch(new URL('https://careers.example.com/a'));
+      const result = await subjectUnderTest.fetch(new URL('https://careers.example.com/a'));
 
       expect(page.mouse.wheel).toHaveBeenCalledTimes(MAX_SCROLLS);
+      expect(result.partial).toBe(true);
+    });
+
+    it('calls the page whole after a full wait without new links', async () => {
+      page.waitForFunction.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new errors.TimeoutError('no more'));
+
+      await expect(subjectUnderTest.fetch(new URL('https://careers.example.com/a'))).resolves.toMatchObject({ partial: false });
+    });
+
+    it('calls the page partial when the deadline cut the wait for new links short — no growth then proves nothing', async () => {
+      const result = await subjectUnderTest.fetch(new URL('https://careers.example.com/a'), 50);
+      const options = page.waitForFunction.mock.calls[0]?.[2] as { readonly timeout: number } | undefined;
+
+      expect(options?.timeout).toBeLessThan(100);
+      expect(result.partial).toBe(true);
+    });
+
+    it('calls the page partial when the deadline passed before the first scroll', async () => {
+      vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValue(20_000);
+
+      const result = await subjectUnderTest.fetch(new URL('https://careers.example.com/a'));
+
+      expect(page.mouse.wheel).not.toHaveBeenCalled();
+      expect(result.partial).toBe(true);
     });
 
     it('passes on an error of the page other than a timeout while scrolling', async () => {

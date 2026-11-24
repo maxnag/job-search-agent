@@ -71,7 +71,9 @@ function summaryLine(summary: ISourceScanSummary): string {
     paint('cyan', `${summary.queued} queued for extraction`)
   ];
 
-  return `${source} ${outcome}: ${counts.join(', ')}\n`;
+  const gaps = summary.gaps.length > 0 ? paint('yellow', ` — incomplete (${summary.gaps.join(', ')}), nothing closed`) : '';
+
+  return `${source} ${outcome}: ${counts.join(', ')}${gaps}\n`;
 }
 
 /**

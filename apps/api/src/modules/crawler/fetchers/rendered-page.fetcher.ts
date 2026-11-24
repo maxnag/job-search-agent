@@ -7,6 +7,7 @@ import { SourceFetchModeEnum } from '@job-agent/shared';
 import type { IEnv } from '../../../config/env.schema.js';
 import type { IFetchedPage } from '../interfaces/fetched-page.interface.js';
 import type { IPageFetcher } from '../interfaces/page-fetcher.interface.js';
+import type { IScrollResult } from '../interfaces/scroll-result.interface.js';
 import { AddressGuardService } from '../services/address-guard.service.js';
 
 /**
@@ -74,7 +75,8 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
   ) {}
 
   /**
-   * Open the page, wait for the network to settle, scroll while new links appear, return the rendered HTML
+   * Open the page, wait for the network to settle, scroll while new links appear, return the rendered HTML — `partial`
+   * when the scrolling stopped before the links stopped growing
    *
    * @param {URL} url
    * @param {number} [limitMs] Limit instead of `RENDER_TIMEOUT_MS`
@@ -95,15 +97,16 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
 
       await this.settle(page, deadline);
 
-      const scrolls = await this.scrollWhileLinksGrow(page, deadline);
+      const { scrolls, partial } = await this.scrollWhileLinksGrow(page, deadline);
 
-      this.logger.debug({ message: 'Page rendered', host: url.host, scrolls });
+      this.logger.debug({ message: 'Page rendered', host: url.host, scrolls, partial });
 
       return {
         url: page.url(),
         status: response?.status() ?? 0,
         headers: response?.headers() ?? {},
-        html: await page.content()
+        html: await page.content(),
+        partial
       };
     } finally {
       await context.close();
@@ -246,14 +249,15 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
 
   /**
    * Scroll to the bottom and wait for more links, until their number stops growing, `RENDER_MAX_SCROLLS` is reached
-   * or the deadline passes
+   * or the deadline passes. Only a full `RENDER_SCROLL_WAIT_MS` without a new link ends the list; a wait the deadline
+   * cut short proves nothing, so it leaves the result partial
    *
    * @param {Page} page
    * @param {number} deadline
    *
-   * @returns {Promise<number>} The number of scrolls made
+   * @returns {Promise<IScrollResult>}
    */
-  private async scrollWhileLinksGrow(page: Page, deadline: number): Promise<number> {
+  private async scrollWhileLinksGrow(page: Page, deadline: number): Promise<IScrollResult> {
     const maxScrolls = this.configService.get('RENDER_MAX_SCROLLS', { infer: true });
     const scrollWaitMs = this.configService.get('RENDER_SCROLL_WAIT_MS', { infer: true });
 
@@ -261,7 +265,7 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
       const timeout = Math.min(scrollWaitMs, deadline - Date.now());
 
       if (timeout <= 0) {
-        return scroll;
+        return { scrolls: scroll, partial: true };
       }
 
       const links = await page.locator('a[href]').count();
@@ -269,11 +273,11 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
       await page.mouse.wheel(0, SCROLL_STEP_PX);
 
       if (!(await this.waitForMoreLinks(page, links, timeout))) {
-        return scroll + 1;
+        return { scrolls: scroll + 1, partial: timeout < scrollWaitMs };
       }
     }
 
-    return maxScrolls;
+    return { scrolls: maxScrolls, partial: true };
   }
 
   /**

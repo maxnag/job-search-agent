@@ -1,4 +1,5 @@
 import type { VacancyRowType } from '../../vacancies/interfaces/vacancy-row.interface.js';
+import type { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import type { IScreenedPosition } from './screened-position.interface.js';
 
 /**
@@ -18,6 +19,13 @@ export interface IListingScanRequest {
    * @var {readonly IScreenedPosition[]}
    */
   readonly positions: readonly IScreenedPosition[];
+
+  /**
+   * Why the page did not show the whole listing; with any gap nothing is closed
+   *
+   * @var {readonly ListingGapEnum[]}
+   */
+  readonly gaps: readonly ListingGapEnum[];
 
   /**
    * Vacancies of any source with the URL or the dedup key of a position

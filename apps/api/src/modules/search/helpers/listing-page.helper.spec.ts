@@ -8,7 +8,7 @@ describe('extractLinkCandidates', () => {
   it('resolves relative links against the page and drops the fragment', () => {
     const html = '<a href="/jobs/1#apply">Backend Developer</a><a href="https://boards.example.org/2">Frontend Developer</a>';
 
-    expect(extractLinkCandidates(html, PAGE, 10).map(candidate => candidate.url)).toEqual([
+    expect(extractLinkCandidates(html, PAGE, 10).candidates.map(candidate => candidate.url)).toEqual([
       'https://careers.example.com/jobs/1',
       'https://boards.example.org/2'
     ]);
@@ -25,13 +25,13 @@ describe('extractLinkCandidates', () => {
       '<a href="">Empty</a>'
     ].join('');
 
-    expect(extractLinkCandidates(html, PAGE, 10)).toEqual([]);
+    expect(extractLinkCandidates(html, PAGE, 10).candidates).toEqual([]);
   });
 
   it('keeps one candidate per URL, preferring one with text', () => {
     const html = '<a href="/jobs/1"><img alt=""></a><a href="/jobs/1">Backend Developer</a><a href="/jobs/1">Apply</a>';
 
-    expect(extractLinkCandidates(html, PAGE, 10)).toEqual([
+    expect(extractLinkCandidates(html, PAGE, 10).candidates).toEqual([
       { url: 'https://careers.example.com/jobs/1', text: 'Backend Developer', context: expect.any(String) as string }
     ]);
   });
@@ -39,38 +39,38 @@ describe('extractLinkCandidates', () => {
   it('takes the text from aria-label or title when the link has none', () => {
     const html = '<a href="/jobs/1" aria-label="Backend Developer"></a><a href="/jobs/2" title="QA Engineer"> </a>';
 
-    expect(extractLinkCandidates(html, PAGE, 10).map(candidate => candidate.text)).toEqual(['Backend Developer', 'QA Engineer']);
+    expect(extractLinkCandidates(html, PAGE, 10).candidates.map(candidate => candidate.text)).toEqual(['Backend Developer', 'QA Engineer']);
   });
 
   it('gives the text of the card around the link as its context, but not the whole list', () => {
     const card = '<li><a href="/jobs/1">Backend Developer</a> <span>Haifa · Hybrid</span></li>';
     const html = `<ul>${card}<li>${'x'.repeat(400)}</li></ul>`;
 
-    expect(extractLinkCandidates(html, PAGE, 10)[0]?.context).toBe('Backend Developer Haifa · Hybrid');
+    expect(extractLinkCandidates(html, PAGE, 10).candidates[0]?.context).toBe('Backend Developer Haifa · Hybrid');
   });
 
   it('keeps the words of neighbouring elements apart in the context', () => {
     const html = `<ul><li><div><a href="/jobs/1">Backend Developer</a><a href="/apply/1">Apply</a></div><div>Haifa</div></li><li>${'x'.repeat(400)}</li></ul>`;
 
-    expect(extractLinkCandidates(html, PAGE, 10)[0]?.context).toBe('Backend Developer Apply Haifa');
+    expect(extractLinkCandidates(html, PAGE, 10).candidates[0]?.context).toBe('Backend Developer Apply Haifa');
   });
 
   it('keeps a label apart from the heading inside one card link, without splitting inline text', () => {
     const html = '<a href="/jobs/1"><span>Engineering</span><h3>Senior Software Engineer</h3><span>Isr</span><span>ael</span></a>';
 
-    expect(extractLinkCandidates(html, PAGE, 10)[0]?.text).toBe('Engineering Senior Software Engineer Israel');
+    expect(extractLinkCandidates(html, PAGE, 10).candidates[0]?.text).toBe('Engineering Senior Software Engineer Israel');
   });
 
   it('gives no context when the card holds nothing but the link text', () => {
     const html = '<div><a href="/jobs/1">Backend Developer</a></div>';
 
-    expect(extractLinkCandidates(html, PAGE, 10)[0]?.context).toBe('');
+    expect(extractLinkCandidates(html, PAGE, 10).candidates[0]?.context).toBe('');
   });
 
   it('collapses whitespace and ignores scripts and styles', () => {
     const html = '<div><a href="/jobs/1">  Backend\n  Developer </a><script>var x = "noise";</script><style>.a{}</style></div>';
 
-    expect(extractLinkCandidates(html, PAGE, 10)).toEqual([
+    expect(extractLinkCandidates(html, PAGE, 10).candidates).toEqual([
       { url: 'https://careers.example.com/jobs/1', text: 'Backend Developer', context: '' }
     ]);
   });
@@ -86,16 +86,30 @@ describe('extractLinkCandidates', () => {
       '</ul>'
     ].join('');
 
-    expect(extractLinkCandidates(html, PAGE, 10)).toEqual([
+    expect(extractLinkCandidates(html, PAGE, 10).candidates).toEqual([
       { url: 'https://careers.example.com/jobs/1', text: 'Backend Developer', context: 'Backend Developer Haifa' },
       { url: 'https://careers.example.com/jobs/4', text: 'QA Engineer', context: '' }
     ]);
   });
 
-  it('stops at the link limit, in page order', () => {
+  it('stops at the link limit, in page order, and says the list was cut short', () => {
     const html = Array.from({ length: 5 }, (_, index) => `<a href="/jobs/${index}">Job ${index}</a>`).join('');
+    const { candidates, truncated } = extractLinkCandidates(html, PAGE, 3);
 
-    expect(extractLinkCandidates(html, PAGE, 3).map(candidate => candidate.text)).toEqual(['Job 0', 'Job 1', 'Job 2']);
+    expect(candidates.map(candidate => candidate.text)).toEqual(['Job 0', 'Job 1', 'Job 2']);
+    expect(truncated).toBe(true);
+  });
+
+  it('is not cut short when the page has exactly as many links as the limit', () => {
+    const html = Array.from({ length: 3 }, (_, index) => `<a href="/jobs/${index}">Job ${index}</a>`).join('');
+
+    expect(extractLinkCandidates(html, PAGE, 3).truncated).toBe(false);
+  });
+
+  it('is cut short by any link left after the limit, even one it would skip — a false gap only delays a closing', () => {
+    const html = '<a href="/jobs/1">Job 1</a><a href="/jobs/2">Job 2</a><a href="#top">Top</a>';
+
+    expect(extractLinkCandidates(html, PAGE, 2).truncated).toBe(true);
   });
 });
 

@@ -275,7 +275,7 @@ export class SourceScanOrchestrator {
     ]);
     const now = new Date();
     const recheckBefore = new Date(now.getTime() - this.configService.get('VACANCY_RECHECK_HOURS', { infer: true }) * HOUR_MS);
-    const plan = planListingScan({ sourceId: source.source_id, positions, known, open, now, recheckBefore });
+    const plan = planListingScan({ sourceId: source.source_id, positions, gaps: listing.gaps, known, open, now, recheckBefore });
     const result = await this.vacancyRepository.applyScan(plan);
     const written = [...result.created, ...result.updated];
     const extractIds = written.filter(vacancy => vacancy.stage === VacancyStageEnum.LISTED).map(vacancy => vacancy.vacancyId);
@@ -291,6 +291,14 @@ export class SourceScanOrchestrator {
         links: listing.links,
         open: open.length
       });
+    } else if (listing.gaps.length > 0) {
+      this.logger.warn({
+        message: 'Listing is incomplete, nothing closed',
+        sourceId: source.source_id,
+        gaps: listing.gaps,
+        open: open.length,
+        rechecked: plan.recheckIds.length
+      });
     }
 
     const summary = {
@@ -300,7 +308,8 @@ export class SourceScanOrchestrator {
       created: result.created.length,
       skipped: written.filter(vacancy => vacancy.stage === VacancyStageEnum.SKIPPED).length,
       closed: result.closedIds.length,
-      queued: extractIds.length + plan.recheckIds.length
+      queued: extractIds.length + plan.recheckIds.length,
+      gaps: listing.gaps
     };
 
     this.logger.log({ message: 'Source scanned', ...summary });
@@ -317,6 +326,6 @@ export class SourceScanOrchestrator {
    * @returns {ISourceScanSummary}
    */
   private summary(sourceId: number, outcome: SourceScanOutcomeEnum): ISourceScanSummary {
-    return { sourceId, outcome, links: 0, positions: 0, created: 0, skipped: 0, closed: 0, queued: 0 };
+    return { sourceId, outcome, links: 0, positions: 0, created: 0, skipped: 0, closed: 0, queued: 0, gaps: [] };
   }
 }

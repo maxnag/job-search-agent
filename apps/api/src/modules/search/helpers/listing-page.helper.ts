@@ -2,6 +2,7 @@ import { load } from 'cheerio';
 
 import { HIDDEN_CONTENT } from '../../crawler/helpers/hidden-content.helper.js';
 import type { ILinkCandidate } from '../interfaces/link-candidate.interface.js';
+import type { ILinkCandidates } from '../interfaces/link-candidates.interface.js';
 
 /**
  * Longest text around a link kept as its context — a card or a table row, not the whole list
@@ -51,7 +52,7 @@ function collapse(text: string): string {
  *
  * @returns {string | undefined}
  */
-function resolveLink(href: string | undefined, pageURL: string): string | undefined {
+export function resolveLink(href: string | undefined, pageURL: string): string | undefined {
   const url = href ? URL.parse(href.trim(), pageURL) : null;
 
   if (!url || !WEB_PROTOCOLS.has(url.protocol)) {
@@ -70,18 +71,20 @@ function resolveLink(href: string | undefined, pageURL: string): string | undefi
 }
 
 /**
- * The links of a listing page with their text and the text around them, one per URL, page order, at most `maxLinks`.
- * The context is the largest ancestor whose text is still short — the card or the row of the position
+ * The links of a listing page with their text and the text around them, one per URL, page order, at most `maxLinks`;
+ * cut short when a link is left after the limit. The context is the largest ancestor whose text is still short — the
+ * card or the row of the position
  *
  * @param {string} html
  * @param {string} pageURL
  * @param {number} maxLinks
  *
- * @returns {ILinkCandidate[]}
+ * @returns {ILinkCandidates}
  */
-export function extractLinkCandidates(html: string, pageURL: string, maxLinks: number): ILinkCandidate[] {
+export function extractLinkCandidates(html: string, pageURL: string, maxLinks: number): ILinkCandidates {
   const $ = load(html);
   const byURL = new Map<string, ILinkCandidate>();
+  let truncated = false;
 
   $(NON_CONTENT).remove();
   $(HIDDEN_CONTENT).replaceWith(' ');
@@ -89,6 +92,8 @@ export function extractLinkCandidates(html: string, pageURL: string, maxLinks: n
 
   for (const element of $('a[href]').toArray()) {
     if (byURL.size >= maxLinks) {
+      truncated = true;
+
       break;
     }
 
@@ -121,7 +126,7 @@ export function extractLinkCandidates(html: string, pageURL: string, maxLinks: n
     byURL.set(url, { url, text, context: context === text ? '' : context });
   }
 
-  return [...byURL.values()];
+  return { candidates: [...byURL.values()], truncated };
 }
 
 /**

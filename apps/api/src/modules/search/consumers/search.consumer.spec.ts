@@ -22,7 +22,8 @@ const SUMMARY = {
   created: 2,
   skipped: 1,
   closed: 0,
-  queued: 1
+  queued: 1,
+  gaps: []
 };
 
 /**

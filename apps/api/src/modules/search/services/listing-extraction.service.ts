@@ -10,7 +10,9 @@ import type { IFetchedPage } from '../../crawler/interfaces/fetched-page.interfa
 import { LLMClient } from '../../llm/clients/l-l-m.client.js';
 import { fenceUntrusted } from '../../llm/helpers/untrusted-text.helper.js';
 import { VACANCY_FIELD_LIMITS, clipNullable, clipText } from '../../vacancies/helpers/vacancy-fields.helper.js';
+import { ListingGapEnum } from '../enums/listing-gap.enum.js';
 import { extractLinkCandidates, renderLinkCandidates } from '../helpers/listing-page.helper.js';
+import { findPagination } from '../helpers/listing-pagination.helper.js';
 import type { ILinkCandidate } from '../interfaces/link-candidate.interface.js';
 import type { IListedPosition } from '../interfaces/listed-position.interface.js';
 import type { IListingExtraction } from '../interfaces/listing-extraction.interface.js';
@@ -29,6 +31,33 @@ const PROMPT_URL = new URL('../prompts/vacancy-listing.md', import.meta.url);
  * @type {string}
  */
 const LINKS_TAG = 'links';
+
+/**
+ * Gaps of a listing page, in a fixed order
+ *
+ * @param {boolean} paginated The page links to more of the list
+ * @param {boolean} truncated The link limit cut the list short
+ * @param {boolean} partial The scrolling stopped while links were still growing
+ *
+ * @returns {ListingGapEnum[]}
+ */
+function listingGaps(paginated: boolean, truncated: boolean, partial: boolean): ListingGapEnum[] {
+  const gaps: ListingGapEnum[] = [];
+
+  if (paginated) {
+    gaps.push(ListingGapEnum.PAGINATION);
+  }
+
+  if (truncated) {
+    gaps.push(ListingGapEnum.LINK_LIMIT);
+  }
+
+  if (partial) {
+    gaps.push(ListingGapEnum.SCROLL_LIMIT);
+  }
+
+  return gaps;
+}
 
 /**
  * Turns a listing into its positions: a page is reduced to numbered links by code, the LLM picks and classifies the
@@ -54,7 +83,8 @@ export class ListingExtractionService {
   ) {}
 
   /**
-   * Positions of a listing page; a page without links costs no LLM call
+   * Positions of a listing page and the gaps that kept part of the list out of sight — pagination, the link limit, a
+   * scroll stopped early; a page without links costs no LLM call
    *
    * @param {IFetchedPage} page
    * @param {string} sourceName Company of the positions the page does not name a company for
@@ -64,13 +94,18 @@ export class ListingExtractionService {
    * @returns {Promise<IListingExtraction>}
    */
   async extract(page: IFetchedPage, sourceName: string): Promise<IListingExtraction> {
-    const candidates = extractLinkCandidates(page.html, page.url, this.configService.get('LISTING_MAX_LINKS', { infer: true }));
+    const { candidates, truncated } = extractLinkCandidates(
+      page.html,
+      page.url,
+      this.configService.get('LISTING_MAX_LINKS', { infer: true })
+    );
+    const gaps = listingGaps(findPagination(page.html, page.url) !== undefined, truncated, page.partial === true);
 
     if (candidates.length === 0) {
-      return { links: 0, positions: [] };
+      return { links: 0, positions: [], gaps };
     }
 
-    return { links: candidates.length, positions: await this.classify(page.url, candidates, sourceName) };
+    return { links: candidates.length, positions: await this.classify(page.url, candidates, sourceName), gaps };
   }
 
   /**
