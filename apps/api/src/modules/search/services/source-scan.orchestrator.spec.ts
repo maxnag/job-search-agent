@@ -344,7 +344,10 @@ describe('SourceScanOrchestrator (unit)', () => {
         vacancy_dedup_key: 'northwind|data engineer',
         vacancy_stage: VacancyStageEnum.EXTRACTED,
         vacancy_data: { title: 'Data Engineer' },
-        vacancy_checked_at: null
+        vacancy_checked_at: null,
+        vacancy_text_url: null,
+        vacancy_text_searched_at: null,
+        vacancy_text_searches: 0
       } as unknown as VacancyRowType;
       const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 

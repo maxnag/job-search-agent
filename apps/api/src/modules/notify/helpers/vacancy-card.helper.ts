@@ -113,14 +113,16 @@ function reasonLine(reason: IMatchReason): string | undefined {
 }
 
 /**
- * The link to the vacancy page
+ * The link to the vacancy page, and to the posting on the company board it was read from when it has one
  *
  * @param {IVacancyNotice} vacancy
  *
  * @returns {string}
  */
 function link(vacancy: IVacancyNotice): string {
-  return `<a href="${escapeHTML(vacancy.url)}">Open the vacancy</a>`;
+  const open = `<a href="${escapeHTML(vacancy.url)}">Open the vacancy</a>`;
+
+  return vacancy.textURL ? `${open} · <a href="${escapeHTML(vacancy.textURL)}">On the company board</a>` : open;
 }
 
 /**
@@ -177,6 +179,20 @@ export function formatSourceBlockedNotice(source: ISourceNotice): string {
     ...(source.error ? [escapeHTML(source.error)] : []),
     escapeHTML(source.url),
     'Scans resume after source_status is set back to ok.'
+  ].join('\n');
+}
+
+/**
+ * Message about the mailbox the job mail reading cannot open, with what to do; the reading stays off until the API
+ * starts again
+ *
+ * @returns {string}
+ */
+export function formatJobMailDisabledNotice(): string {
+  return [
+    '📭 Job mail is off',
+    'The mailbox refused the account or its app password.',
+    'Check JOB_MAIL_IMAP_USER and JOB_MAIL_IMAP_PASSWORD in .env, then restart the API.'
   ].join('\n');
 }
 

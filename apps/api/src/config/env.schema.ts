@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { LLMProviderEnum, LogLevelEnum } from '@job-agent/shared';
+import { JobMailProviderEnum, LLMProviderEnum, LogLevelEnum } from '@job-agent/shared';
 
 import { BrowserChannelEnum } from '../modules/crawler/enums/browser-channel.enum.js';
 
@@ -116,7 +116,21 @@ export const envSchema = z
     DISCOVER_CRON: z.preprocess(emptyToUndefined, z.string().min(1).default('0 9 * * 1')),
     DISCOVER_RECHECK_DAYS: positiveInt().default(30),
     DISCOVER_BOARD_TIMEOUT_MS: positiveInt().default(10000),
-    DISCOVER_MAX_CARDS: positiveInt().default(10)
+    DISCOVER_MAX_CARDS: positiveInt().default(10),
+
+    JOB_MAIL_PROVIDER: z.enum(JobMailProviderEnum).default(JobMailProviderEnum.IMAP),
+    JOB_MAIL_IMAP_HOST: z.preprocess(emptyToUndefined, z.string().min(1).default('imap.gmail.com')),
+    JOB_MAIL_IMAP_PORT: positiveInt().default(993),
+    JOB_MAIL_IMAP_USER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    JOB_MAIL_IMAP_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    JOB_MAIL_IMAP_MAILBOX: z.preprocess(emptyToUndefined, z.string().min(1).default('INBOX')),
+    JOB_MAIL_LOOKBACK_HOURS: positiveInt().default(24),
+    JOB_MAIL_MAX_MESSAGES: positiveInt().default(100),
+    JOB_MAIL_TRIAGE_BATCH_SIZE: positiveInt().default(50),
+    JOB_MAIL_INTERVAL_MINUTES: positiveInt().default(30),
+    JOB_MAIL_TIMEOUT_MS: positiveInt().default(30000),
+    JOB_MAIL_TEXT_RECHECK_DAYS: positiveInt().default(7),
+    JOB_MAIL_TEXT_MAX_SEARCHES: positiveInt().default(3)
   })
   .superRefine((env, context) => {
     const key = LLM_PROVIDER_REQUIRED_KEYS[env.LLM_PROVIDER];

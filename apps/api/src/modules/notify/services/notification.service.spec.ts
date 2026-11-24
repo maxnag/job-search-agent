@@ -20,6 +20,7 @@ const NOTICE: IVacancyNotice = {
   country: 'IL',
   workMode: null,
   url: 'https://careers.example.com/jobs/7',
+  textURL: null,
   stage: VacancyStageEnum.EXTRACTED,
   verdict: VacancyMatchVerdictEnum.FIT,
   reasons: []

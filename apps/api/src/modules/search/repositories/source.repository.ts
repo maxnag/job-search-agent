@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 
 import { sources } from '@job-agent/db';
-import { SourceStatusEnum } from '@job-agent/shared';
+import { SourceFetchModeEnum, SourceStatusEnum } from '@job-agent/shared';
 
 import { DatabaseService } from '../../database/services/database.service.js';
 import type { SourceInsertType, SourceRowType } from '../interfaces/source-row.interface.js';
@@ -57,7 +57,7 @@ export class SourceRepository {
   }
 
   /**
-   * Sources the schedule scans: switched on by the owner and not stopped by the crawler
+   * Sources the schedule scans: switched on by the owner and not stopped by the crawler; a job mail source has no page
    *
    * @returns {Promise<SourceRowType[]>}
    */
@@ -65,17 +65,27 @@ export class SourceRepository {
     return this.databaseService.db
       .select()
       .from(sources)
-      .where(and(eq(sources.source_is_active, true), eq(sources.source_status, SourceStatusEnum.OK)))
+      .where(
+        and(
+          eq(sources.source_is_active, true),
+          eq(sources.source_status, SourceStatusEnum.OK),
+          ne(sources.source_fetch_mode, SourceFetchModeEnum.JOB_MAIL)
+        )
+      )
       .orderBy(asc(sources.source_id));
   }
 
   /**
-   * Sources the owner switched on, whatever the crawler noted — a forced scan
+   * Sources the owner switched on, whatever the crawler noted — a forced scan; a job mail source has no page
    *
    * @returns {Promise<SourceRowType[]>}
    */
   async findActive(): Promise<SourceRowType[]> {
-    return this.databaseService.db.select().from(sources).where(eq(sources.source_is_active, true)).orderBy(asc(sources.source_id));
+    return this.databaseService.db
+      .select()
+      .from(sources)
+      .where(and(eq(sources.source_is_active, true), ne(sources.source_fetch_mode, SourceFetchModeEnum.JOB_MAIL)))
+      .orderBy(asc(sources.source_id));
   }
 
   /**

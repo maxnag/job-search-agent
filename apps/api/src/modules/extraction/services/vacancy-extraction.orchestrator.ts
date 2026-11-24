@@ -9,6 +9,8 @@ import { ATSClientRegistry } from '../../ats/services/a-t-s-client.registry.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
 import { CrawlerService } from '../../crawler/services/crawler.service.js';
+import { CompanyPostingService } from '../../discovery/services/company-posting.service.js';
+import { isNoFetchURL } from '../../job-mail/helpers/job-mail-link.helper.js';
 import { VacancyMatchingService } from '../../matching/services/vacancy-matching.service.js';
 import type { SourceRowType } from '../../search/interfaces/source-row.interface.js';
 import { SourceRepository } from '../../search/repositories/source.repository.js';
@@ -50,6 +52,27 @@ const ROBOTS_SKIP_REASON = 'robots.txt disallows the vacancy page';
 const PRIVATE_ADDRESS_SKIP_REASON = 'the vacancy link leads to a private network address';
 
 /**
+ * Skip reason of a vacancy from a job mail whose site refused the crawler — the job mail source is not stopped by it
+ *
+ * @type {string}
+ */
+const SITE_REFUSED_SKIP_REASON = 'the site of the vacancy refused the crawler (403, 429 or a challenge)';
+
+/**
+ * Reason a vacancy of a site the crawler never opens waits with: its company board has not shown it yet
+ *
+ * @type {string}
+ */
+const NO_TEXT_REASON = 'no description yet: the vacancy is not on a board of its company (Comeet, Greenhouse, Lever)';
+
+/**
+ * Milliseconds in a day
+ *
+ * @type {number}
+ */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Crawl refusals that drop a vacancy for good, with the reason the report shows
  *
  * @type {ReadonlyMap<CrawlErrorCodeEnum, string>}
@@ -61,7 +84,8 @@ const SKIPPING_ERRORS: ReadonlyMap<CrawlErrorCodeEnum, string> = new Map([
 
 /**
  * Extracts a vacancy from its page: fetched politely in the mode of its source (a vacancy of an `ats` source from its
- * posting on the board), reduced to text, hashed — the same
+ * posting on the board; a vacancy of a site the crawler never opens — LinkedIn, Glassdoor — from the same position
+ * found on a board of its company, or not at all), reduced to text, hashed — the same
  * text costs no LLM call — extracted, normalized onto the skill dictionary, stored and matched against every
  * profile; new `fit` and `almost` verdicts are handed to the notifications. A page that is gone or says
  * the position is closed closes the vacancy
@@ -77,6 +101,7 @@ export class VacancyExtractionOrchestrator {
 
   /**
    * @param {CrawlerService} crawlerService
+   * @param {CompanyPostingService} companyPostingService
    * @param {ATSClientRegistry} atsClientRegistry
    * @param {VacancyExtractionService} vacancyExtractionService
    * @param {VacancyMatchingService} vacancyMatchingService
@@ -87,6 +112,7 @@ export class VacancyExtractionOrchestrator {
    */
   constructor(
     private readonly crawlerService: CrawlerService,
+    private readonly companyPostingService: CompanyPostingService,
     private readonly atsClientRegistry: ATSClientRegistry,
     private readonly vacancyExtractionService: VacancyExtractionService,
     private readonly vacancyMatchingService: VacancyMatchingService,
@@ -120,13 +146,64 @@ export class VacancyExtractionOrchestrator {
       return { vacancyId, outcome: VacancyExtractionOutcomeEnum.SKIPPED };
     }
 
-    const page = await this.fetchVacancy(vacancy);
+    const readable = await this.withText(vacancy);
+
+    if (!readable) {
+      return { vacancyId, outcome: VacancyExtractionOutcomeEnum.NO_TEXT };
+    }
+
+    const page = await this.fetchVacancy(readable);
 
     if (page.outcome) {
       return { vacancyId, outcome: page.outcome };
     }
 
-    return this.processPage(vacancy, page.html);
+    return this.processPage(readable, page.html);
+  }
+
+  /**
+   * The vacancy ready to be read. A vacancy of a site the crawler never opens is read from the same position on a board
+   * of its company: looked up once, then again after `JOB_MAIL_TEXT_RECHECK_DAYS`, at most `JOB_MAIL_TEXT_MAX_SEARCHES`
+   * times; until it is found the vacancy waits as `listed` with the reason, and no card is sent
+   *
+   * @param {VacancyRowType} vacancy
+   *
+   * @throws {Error} `BRAVE_SEARCH_*` from the web search — retried, except a refused key
+   *
+   * @returns {Promise<VacancyRowType | undefined>} Undefined when there is nothing to read yet
+   */
+  private async withText(vacancy: VacancyRowType): Promise<VacancyRowType | undefined> {
+    if (vacancy.vacancy_text_url || !isNoFetchURL(vacancy.vacancy_url)) {
+      return vacancy;
+    }
+
+    const now = new Date();
+    const dueAfter = now.getTime() - this.configService.get('JOB_MAIL_TEXT_RECHECK_DAYS', { infer: true }) * DAY_MS;
+    const isDue =
+      vacancy.vacancy_text_searches < this.configService.get('JOB_MAIL_TEXT_MAX_SEARCHES', { infer: true }) &&
+      (!vacancy.vacancy_text_searched_at || vacancy.vacancy_text_searched_at.getTime() < dueAfter);
+
+    if (!isDue || !this.companyPostingService.isEnabled()) {
+      await this.vacancyRepository.update(vacancy.vacancy_id, { vacancy_skip_reason: NO_TEXT_REASON });
+
+      return undefined;
+    }
+
+    const posting = await this.companyPostingService.find(vacancy);
+    const searched = { vacancy_text_searched_at: now, vacancy_text_searches: vacancy.vacancy_text_searches + 1 };
+
+    if (!posting) {
+      await this.vacancyRepository.update(vacancy.vacancy_id, { ...searched, vacancy_skip_reason: NO_TEXT_REASON });
+      this.logger.debug({ message: 'Company posting not found', vacancyId: vacancy.vacancy_id, searches: searched.vacancy_text_searches });
+
+      return undefined;
+    }
+
+    const found = { ...searched, vacancy_text_url: posting.url, vacancy_external_id: posting.externalId, vacancy_skip_reason: null };
+
+    await this.vacancyRepository.update(vacancy.vacancy_id, found);
+
+    return { ...vacancy, ...found };
   }
 
   /**
@@ -169,6 +246,15 @@ export class VacancyExtractionOrchestrator {
         return { outcome: VacancyExtractionOutcomeEnum.SKIPPED };
       }
 
+      if (error.code === CrawlErrorCodeEnum.SOURCE_BLOCKED && source?.source_fetch_mode === SourceFetchModeEnum.JOB_MAIL) {
+        await this.vacancyRepository.update(vacancy.vacancy_id, {
+          vacancy_stage: VacancyStageEnum.SKIPPED,
+          vacancy_skip_reason: SITE_REFUSED_SKIP_REASON
+        });
+
+        return { outcome: VacancyExtractionOutcomeEnum.SKIPPED };
+      }
+
       if (error.code === CrawlErrorCodeEnum.SOURCE_BLOCKED) {
         await this.sourceRepository.markFailed(vacancy.source_id, error.message, SourceStatusEnum.BLOCKED);
         await this.pipelineEventsService.sourceBlocked(vacancy.source_id);
@@ -179,8 +265,9 @@ export class VacancyExtractionOrchestrator {
   }
 
   /**
-   * The HTML of a vacancy: the posting from the board of an `ats` source, the page fetched in the mode of the source
-   * otherwise
+   * The HTML of a vacancy: the posting from a board — of an `ats` source, or the company board a vacancy of a site the
+   * crawler never opens was found on —, the page fetched in the mode of the source otherwise; a job mail source reads
+   * its vacancy pages as plain HTML
    *
    * @param {VacancyRowType} vacancy
    * @param {SourceRowType | undefined} source
@@ -192,23 +279,41 @@ export class VacancyExtractionOrchestrator {
    * @returns {Promise<string>}
    */
   private async loadVacancy(vacancy: VacancyRowType, source: SourceRowType | undefined): Promise<string> {
+    if (vacancy.vacancy_text_url) {
+      return this.loadPosting(vacancy, vacancy.vacancy_text_url, vacancy.vacancy_text_url);
+    }
+
     if (source?.source_fetch_mode !== SourceFetchModeEnum.ATS) {
-      const page = await this.crawlerService.fetchPage(vacancy.vacancy_url, source?.source_fetch_mode ?? SOURCE_FALLBACK_MODE);
+      const mode = !source || source.source_fetch_mode === SourceFetchModeEnum.JOB_MAIL ? SOURCE_FALLBACK_MODE : source.source_fetch_mode;
+      const page = await this.crawlerService.fetchPage(vacancy.vacancy_url, mode);
 
       return page.html;
     }
 
-    const board = parseATSBoard(source.source_url);
+    return this.loadPosting(vacancy, source.source_url, vacancy.vacancy_url);
+  }
+
+  /**
+   * The posting of a vacancy on a board
+   *
+   * @param {VacancyRowType} vacancy
+   * @param {string} boardURL Any link to the board or to one of its positions
+   * @param {string} url Address of the posting
+   *
+   * @throws {CrawlError} If the posting was not fetched
+   * @throws {Error} `ATS_POSTING_UNKNOWN` if the link is not a board or the vacancy has no position id
+   * @throws {Error} `ATS_RESPONSE_INVALID` if the posting does not match its schema
+   *
+   * @returns {Promise<string>}
+   */
+  private async loadPosting(vacancy: VacancyRowType, boardURL: string, url: string): Promise<string> {
+    const board = parseATSBoard(boardURL);
 
     if (!board || !vacancy.vacancy_external_id) {
-      throw new Error(`ATS_POSTING_UNKNOWN: vacancy ${vacancy.vacancy_id} of source ${source.source_id} has no board or position id`);
+      throw new Error(`ATS_POSTING_UNKNOWN: vacancy ${vacancy.vacancy_id} of source ${vacancy.source_id} has no board or position id`);
     }
 
-    return this.atsClientRegistry.findOne(board.kind).fetchPosting({
-      board: board.board,
-      externalId: vacancy.vacancy_external_id,
-      url: vacancy.vacancy_url
-    });
+    return this.atsClientRegistry.findOne(board.kind).fetchPosting({ board: board.board, externalId: vacancy.vacancy_external_id, url });
   }
 
   /**

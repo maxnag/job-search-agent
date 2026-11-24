@@ -1,3 +1,4 @@
+export * from './job-mail-messages.table.js';
 export * from './llm-settings.table.js';
 export * from './profiles.table.js';
 export * from './resume-languages.table.js';

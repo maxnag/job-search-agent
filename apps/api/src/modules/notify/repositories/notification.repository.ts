@@ -28,6 +28,7 @@ const VACANCY_COLUMNS = {
   country: vacancies.vacancy_country,
   workMode: vacancies.vacancy_work_mode,
   url: vacancies.vacancy_url,
+  textURL: vacancies.vacancy_text_url,
   stage: vacancies.vacancy_stage
 };
 

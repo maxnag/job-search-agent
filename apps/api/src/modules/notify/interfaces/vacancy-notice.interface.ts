@@ -56,6 +56,13 @@ export interface IVacancyNotice {
   readonly url: string;
 
   /**
+   * The same position on a board of its company, read instead of a page the crawler never opens; null otherwise
+   *
+   * @var {string | null}
+   */
+  readonly textURL: string | null;
+
+  /**
    * Stage
    *
    * @var {VacancyStageEnum}

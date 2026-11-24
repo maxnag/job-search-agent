@@ -18,6 +18,7 @@ import { ATSClientRegistry } from '../../ats/services/a-t-s-client.registry.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
 import { CrawlerService } from '../../crawler/services/crawler.service.js';
+import { CompanyPostingService } from '../../discovery/services/company-posting.service.js';
 import { VacancyMatchingService } from '../../matching/services/vacancy-matching.service.js';
 import type { SourceRowType } from '../../search/interfaces/source-row.interface.js';
 import { SourceRepository } from '../../search/repositories/source.repository.js';
@@ -93,6 +94,7 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
         VacancyExtractionOrchestrator,
         { provide: CrawlerService, useValue: crawler },
         { provide: ATSClientRegistry, useValue: registry },
+        { provide: CompanyPostingService, useValue: createMock<CompanyPostingService>() },
         { provide: VacancyExtractionService, useValue: extraction },
         { provide: VacancyMatchingService, useValue: matching },
         { provide: PipelineEventsService, useValue: events },

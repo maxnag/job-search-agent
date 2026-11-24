@@ -62,6 +62,9 @@ function row(changes: Partial<VacancyRowType> = {}): VacancyRowType {
     vacancy_last_seen_at: new Date('2026-11-01T00:00:00Z'),
     vacancy_closed_at: null,
     vacancy_checked_at: null,
+    vacancy_text_url: null,
+    vacancy_text_searched_at: null,
+    vacancy_text_searches: 0,
     dt_create: new Date('2026-11-01T00:00:00Z'),
     dt_update: null,
     ...changes
