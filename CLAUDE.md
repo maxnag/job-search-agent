@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `52b7b63` (command help, typo hints and report filters)
-> Run `git log 52b7b63..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `852a23b` (numbered pagination of a listing)
+> Run `git log 852a23b..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -118,7 +118,7 @@ Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)     
 - **Resume first:** `cv:import` turns a resume into a profile version (skills by kind and years, experience, spoken languages); the latest version is the source of truth, vacancies are compared with it by code
 - **Hybrid design:** an agent only where the path differs every time (navigating a site, reading an e-mail); everything else is ordinary code. The LLM understands text and extracts data — it **never scores or judges a vacancy**
 - **Both channels converge** into one extraction step and one set of filters
-- **Career pages** are rows of `sources`, fetched by code — `html` or `rendered` (headless Playwright, scrolled); the crawler obeys `robots.txt`, makes one request at a time per site with random pauses, and stops a source on 403 / 429 / captcha (ADR-017). The LLM picks vacancy links by number, code screens them by the profiles' preferences before any extraction (ADR-018)
+- **Career pages** are rows of `sources`, fetched by code — `html` or `rendered` (headless Playwright, scrolled), a numbered list followed page after page by code; the crawler obeys `robots.txt`, makes one request at a time per site with random pauses, and stops a source on 403 / 429 / captcha (ADR-017). The LLM picks vacancy links by number, code screens them by the profiles' preferences before any extraction (ADR-018)
 - **ATS boards** (Comeet, Greenhouse, Lever) are `ats` sources read through their public APIs by the same crawler, a shorter pause for an API; country and work mode come from the system, the LLM reads only titles (ADR-021)
 - **Discovery** builds web search queries (Brave) from the profiles, keeps only the board a result URL leads to — results are never stored — and offers a board with fitting positions as a Telegram card; the owner adds or ignores it
 - **Browser agent** only for sites whose list answers a form: it drives Playwright once and saves a **recipe**; later runs replay it without an LLM

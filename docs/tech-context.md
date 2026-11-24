@@ -90,7 +90,8 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `RENDER_BROWSER_CHANNEL` | empty — Playwright's own browser; `chrome` \| `chrome-beta` \| `msedge` — one installed in the system |
 | `RENDER_MAX_SCROLLS`, `RENDER_TIMEOUT_MS`, `RENDER_SCROLL_WAIT_MS` | limits of a `rendered` page: scrolls, whole page, wait for new links after a scroll |
 | `SEARCH_INTERVAL_HOURS`, `SEARCH_JITTER_MINUTES` | how often sources are scanned and the random shift of each |
-| `LISTING_MAX_LINKS` | most links of a listing page sent to the LLM; a page cut at the limit is an incomplete listing and closes nothing |
+| `LISTING_MAX_PAGES` | most pages of a paginated listing read per scan, each after the crawl pause; a list left unread past it is incomplete |
+| `LISTING_MAX_LINKS` | most links of a listing — all its pages together — sent to the LLM; once the links fill it no next page is loaded, and the listing is incomplete |
 | `VACANCY_RECHECK_HOURS` | an extracted vacancy still listed, or not seen on an incomplete listing, is read again at most this often |
 | `VACANCY_TEXT_MAX_CHARS` | most characters of a vacancy page sent to the LLM |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | the owner's bot (`<bot id>:<secret>` from @BotFather) and the chat of the cards; both or neither — without them nothing is sent |

@@ -33,7 +33,7 @@ arrive only through Job Alert e-mails, and the data is taken from the e-mail its
 
 ### Career pages
 
-A source is fetched by code in the mode the owner set: `html` (one request) or `rendered` (headless Playwright,
+A source is fetched by code in the mode the owner set: `html` (one request a page) or `rendered` (headless Playwright,
 scrolled while new links appear). The crawler is polite (ADR-017): `robots.txt` first, one request at a time per site
 with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops the source and the owner is told.
 
@@ -43,9 +43,10 @@ with a random pause, a regular browser User-Agent; 403, 429 or a captcha stops t
    excluded cities and companies. A position nobody wants is kept as `skipped` with the reason (ADR-018)
 3. **Extraction** of the rest, then matching and a Telegram card on each event (ADR-019)
 
-A vacancy gone from the listing is closed only when the scan saw the whole list. Pagination, the link limit or a
-scroll stopped early make it incomplete: nothing is closed, and an extracted vacancy not seen is read again on its own
-page, which decides (ADR-019 amendment). `sources:scan` names the gaps.
+A numbered list is followed page after page by code, up to `LISTING_MAX_PAGES`; a refusal of a later page leaves a
+gap instead of stopping the source (ADR-017 amendment). A vacancy gone from the listing is closed only when the scan
+saw the whole list. Pagination left unread, the link limit or a scroll stopped early make it incomplete: nothing is closed, and an extracted vacancy not seen is read again on its own
+page, which decides (ADR-019 amendment). `sources:scan` names the pages read and the gaps.
 
 `pnpm sources:scan` scans by hand, `pnpm vacancies:report` shows every position with its stage and reason —
 filtered by source, stage, verdict, reason, place and age, or as a summary per source (`--help` lists the options).
