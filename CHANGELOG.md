@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/maxnag/job-search-agent/compare/v0.3.0...v0.4.0) (2026-11-24)
+
+
+### Features
+
+* **api:** career pages on ATS boards and company discovery ([#12](https://github.com/maxnag/job-search-agent/issues/12)) ([32eae06](https://github.com/maxnag/job-search-agent/commit/32eae06957fd234e0c977f632212189faab03c95))
+
 ## [0.3.0](https://github.com/maxnag/job-search-agent/compare/v0.2.0...v0.3.0) (2026-11-23)
 
 
