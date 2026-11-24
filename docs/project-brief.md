@@ -29,7 +29,8 @@ Both channels converge into one extraction and one set of filters. Agent tools a
 owner's applications in plain words.
 
 **LinkedIn and Glassdoor are not scraped:** it violates their terms and risks the account. Their vacancies
-arrive only through Job Alert e-mails, and the data is taken from the e-mail itself.
+arrive only through Job Alert e-mails; their links are never opened — the description comes from the company's own
+ATS board, found by web search (ADR-022).
 
 ### Career pages
 
@@ -85,15 +86,14 @@ times a day. On failure a screenshot and a page snapshot are saved.
 
 ### Mail, extraction, matching, notifications
 
-The mail agent classifies the e-mail (Qwen 9B) and picks an action:
+**Mail** (ADR-022) is read over IMAP, read-only, for the last `JOB_MAIL_LOOKBACK_HOURS`; each e-mail once. The `mail`
+step tells its kind from the headers only — sender name, domain, subject:
 
-| E-mail type | Action |
+| E-mail kind | Action |
 |---|---|
-| Vacancy digest (LinkedIn, AllJobs, Drushim, Djinni, DOU) | take links → `extract`; for LinkedIn the data comes from the e-mail |
-| Recruiter reply | find the application, update its status, notify |
-| Interview invitation | notify with date and time |
-| Rejection | update status |
-| Anything else | skip |
+| Job alert (LinkedIn, Glassdoor, AllJobs, a company's own mailing …) | body fetched, links read like a listing → screen → `extract`; LinkedIn / Glassdoor vacancies take their description from the company's ATS board |
+| Recruiter letter | recorded, body not read |
+| Anything else | recorded, body not read |
 
 **Extraction** (the `extract` step of the configured provider — Qwen 27B through Ollama's `format`, or Claude Haiku;
 JSON by schema): open or closed, title, company, level, country, city, work mode, programming languages required or
@@ -123,7 +123,7 @@ failure, and jobs that must survive the Mac's sleep.
 | Queue | Does | Specifics |
 |---|---|---|
 | `search` | scan a source → screened positions; discovery of boards | Job Schedulers: scans every `SEARCH_INTERVAL_HOURS` + jitter, discovery on `DISCOVER_CRON`; `concurrency: 1`, one request at a time per site |
-| `email` | read an e-mail → links or a status | schedule every 30 minutes |
+| `email` | read the mailbox → kinds, vacancies of the job alerts | Job Scheduler every `JOB_MAIL_INTERVAL_MINUTES`; `concurrency: 1`; removed until restart when the password is refused |
 | `extract` | open a vacancy → JSON → match → save | `EXTRACT_CONCURRENCY` (`1` for Ollama), retries with growing backoff |
 | `notify` | cards and notices to Telegram | `concurrency: 1`, one message a second; sweep of unsent cards every `NOTIFY_SWEEP_MINUTES` |
 

@@ -79,6 +79,13 @@ describe('NotifyConsumer (unit)', () => {
       expect(notifications.sendSourceBlocked).toHaveBeenCalledWith(1);
     });
 
+    it('sends the notice of a mailbox that refused the password', async () => {
+      notifications.sendJobMailDisabled.mockResolvedValue(true);
+
+      await expect(subjectUnderTest.process(job(JobNameEnum.JOB_MAIL_DISABLED))).resolves.toBe(true);
+      expect(notifications.sendJobMailDisabled).toHaveBeenCalledTimes(1);
+    });
+
     it('sends a company board card', async () => {
       notifications.sendSourceCandidate.mockResolvedValue(true);
 

@@ -36,6 +36,13 @@
       "when": 1795468174170,
       "tag": "0004_backfill-vacancy-dedup-country",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795540158134,
+      "tag": "0005_job-mail",
+      "breakpoints": true
     }
   ]
 }

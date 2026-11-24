@@ -9,6 +9,7 @@ import {
   actionKeyboard,
   formatChangedNotice,
   formatClosedNotice,
+  formatJobMailDisabledNotice,
   formatMatchCard,
   formatSourceBlockedNotice
 } from '../helpers/vacancy-card.helper.js';
@@ -158,6 +159,24 @@ export class NotificationService {
 
     await this.telegramService.send(formatSourceBlockedNotice(source));
     this.logger.log({ message: 'Source stopped notice sent', sourceId });
+
+    return true;
+  }
+
+  /**
+   * Warn the owner the job mail reading is off: the mailbox refused the account or its app password
+   *
+   * @throws {GrammyError} If Telegram refuses the message
+   *
+   * @returns {Promise<boolean>} True when the message was sent
+   */
+  async sendJobMailDisabled(): Promise<boolean> {
+    if (!this.telegramService.isConfigured) {
+      return false;
+    }
+
+    await this.telegramService.send(formatJobMailDisabledNotice());
+    this.logger.log({ message: 'Job mail off notice sent' });
 
     return true;
   }

@@ -117,6 +117,8 @@ export class NotifyConsumer extends WorkerHost {
       case JobNameEnum.SOURCE_BLOCKED:
         return this.notificationService.sendSourceBlocked(data.sourceId ?? 0);
 
+      case JobNameEnum.JOB_MAIL_DISABLED:
+        return this.notificationService.sendJobMailDisabled();
       case JobNameEnum.SOURCE_CANDIDATE:
         return this.notificationService.sendSourceCandidate(data.sourceCandidateId ?? 0);
       case JobNameEnum.NOTIFY_PENDING:

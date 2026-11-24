@@ -16,6 +16,7 @@
     "build": "tsc -b && pnpm --filter @job-agent/api build:assets",
     "api:build": "tsc -b apps/api/tsconfig.build.json && pnpm --filter @job-agent/api build:assets",
     "cv:import": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/cv-import.js",
+    "job-mail:read": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/job-mail-read.js",
     "sources:add": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-add.js",
     "sources:discover": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-discover.js",
     "sources:scan": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-scan.js",

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, exists, inArray, isNotNull, ne, or, sql } from 'drizzle-orm';
+import { and, eq, exists, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 
 import { vacancies, vacancyActions, vacancyMatches } from '@job-agent/db';
 import { VacancyStageEnum } from '@job-agent/shared';
@@ -71,6 +71,31 @@ export class VacancyRepository {
       .select()
       .from(vacancies)
       .where(or(inArray(vacancies.vacancy_url, [...urls]), inArray(vacancies.vacancy_dedup_key, [...dedupKeys])));
+  }
+
+  /**
+   * Vacancies still waiting for a description: listed, never read from a company board, searched before `before` and
+   * fewer than `maxSearches` times
+   *
+   * @param {Date} before
+   * @param {number} maxSearches
+   *
+   * @returns {Promise<number[]>}
+   */
+  async findTextSearchDue(before: Date, maxSearches: number): Promise<number[]> {
+    const rows = await this.databaseService.db
+      .select({ vacancyId: vacancies.vacancy_id })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.vacancy_stage, VacancyStageEnum.LISTED),
+          isNull(vacancies.vacancy_text_url),
+          lt(vacancies.vacancy_text_searched_at, before),
+          lt(vacancies.vacancy_text_searches, maxSearches)
+        )
+      );
+
+    return rows.map(row => row.vacancyId);
   }
 
   /**

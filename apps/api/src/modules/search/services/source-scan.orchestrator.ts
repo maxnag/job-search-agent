@@ -161,6 +161,12 @@ export class SourceScanOrchestrator {
       throw new Error(`SOURCE_NOT_FOUND: ${request.sourceId}`);
     }
 
+    if (source.source_fetch_mode === SourceFetchModeEnum.JOB_MAIL) {
+      this.logger.debug({ message: 'Job mail source not scanned', sourceId: source.source_id });
+
+      return this.summary(source.source_id, SourceScanOutcomeEnum.SKIPPED);
+    }
+
     if (!request.force && (!source.source_is_active || source.source_status !== SourceStatusEnum.OK)) {
       this.logger.debug({ message: 'Source not scanned', sourceId: source.source_id, status: source.source_status });
 

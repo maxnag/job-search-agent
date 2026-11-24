@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `852a23b` (numbered pagination of a listing)
-> Run `git log 852a23b..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `4540a81` (job-alert e-mails over IMAP)
+> Run `git log 4540a81..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -70,7 +70,7 @@ Job Search Agent collects vacancies from career pages and from job-alert e-mails
 
 **Target market:** Israel (priority — whole country, full-time / hybrid) and Ukraine (remote). Working language English; vacancies requiring Hebrew are filtered out.
 
-**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, Gmail API (read-only), Telegram bot (grammY), MCP servers over stdio, Drizzle ORM, Zod 4, Vitest, pino → Loki + Grafana. LLM: Ollama on the Mac or Claude Haiku 5.5 in the cloud — chosen by `LLM_PROVIDER`, never by code.
+**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, IMAP (`imapflow`, read-only by code), Telegram bot (grammY), MCP servers over stdio, Drizzle ORM, Zod 4, Vitest, pino → Loki + Grafana. LLM: Ollama on the Mac or Claude Haiku 5.5 in the cloud — chosen by `LLM_PROVIDER`, never by code.
 
 **Runs on:** the owner's Mac (Apple Silicon). NestJS, MCP servers, Playwright and Ollama run on the host; Postgres, Redis, Loki and Grafana run in Docker. Development currently happens on Linux with `LLM_PROVIDER=anthropic`.
 
@@ -89,6 +89,7 @@ pnpm sources:add <url> [--name <company>]  # add a career page or an ATS board (
 pnpm sources:discover [--dry-run]      # find ATS boards by web search, cards to Telegram; --dry-run stores nothing
 pnpm sources:scan [--source <id>] [--force]  # scan career pages now; the running API extracts what was queued
 pnpm vacancies:report [options]        # positions with stage and reason; filters by source, stage, verdict, reason, …
+pnpm job-mail:read [--hours n] [--dry-run]  # read the job-alert e-mails now; --dry-run shows the kinds and links, stores nothing
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
 pnpm api:start                         # build, then the API without watch (the owner's Mac)
@@ -110,7 +111,7 @@ Merging it bumps every `package.json`, writes `CHANGELOG.md`, tags `vX.Y.Z` and 
 
 ```
 career pages ─► search queue ─► (html | rendered) ─► LLM picks links ─► screen (code) ─► links ─┐
-Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)                    ─► links ─┤
+job alerts   ─► email queue  ─► (LLM tells the kind by headers) ─► LLM picks links ─► screen (code) ─► links ─┤
                                                                                                  ▼
            extract queue (LLM → JSON) ─► match with the current resume (code) ─► notify queue ─► Telegram card ─► human
 ```
@@ -123,7 +124,8 @@ Gmail alerts ─► email queue  ─► (mail agent: classify, pick action)     
 - **Discovery** builds web search queries (Brave) from the profiles, keeps only the board a result URL leads to — results are never stored — and offers a board with fitting positions as a Telegram card; the owner adds or ignores it
 - **Browser agent** only for sites whose list answers a form: it drives Playwright once and saves a **recipe**; later runs replay it without an LLM
 - **Web text is untrusted** (ADR-020): LLM steps that read it have no tools, the text is fenced in the prompt, hidden elements are dropped, fields are clipped, and no request reaches a private address
-- **LinkedIn and Glassdoor are never scraped** — only their Job Alert e-mails are read, and the data comes from the e-mail itself
+- **Job-alert e-mails** (ADR-022): every `JOB_MAIL_INTERVAL_MINUTES` the last `JOB_MAIL_LOOKBACK_HOURS` of the mailbox are read over IMAP, read-only, each e-mail once (`job_mail_messages`, keyed by `Message-ID`). The LLM tells the kind from the headers only; only a job alert has its body fetched and is read like a listing — it closes nothing. Its sender domain is a `job_mail` source
+- **LinkedIn and Glassdoor are never scraped** — their links from an alert are never opened; the description is looked up on the company's ATS board through Brave, and without it there is no card
 - **Matching is code:** one rule per file (`modules/matching/helpers/rules`) against the current resume and `profile_preferences` — languages, place, level, Hebrew, years, excluded companies; verdict `fit` / `almost` / `no_fit` with reasons
 - **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped) within one country
 - **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
@@ -155,7 +157,7 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 - A new dependency respects the 7-day release delay — use ranges (`^12.0.0`), never "the newest" version: [.claude/rules/dependencies.md](.claude/rules/dependencies.md)
 - Never add scraping of LinkedIn, Glassdoor or any site whose terms forbid it (ADR-003)
 - Never let an LLM decide whether a vacancy fits — that is a filter in code or the human
-- Gmail access is **read-only**; the project never sends, deletes or labels mail
+- Mail access is **read-only**; the project never sends, deletes, moves or flags mail, and never sends the body of an e-mail that is not a job alert to an LLM
 - Skills: `pr-ready` (checks before a PR), `docs-sync` (docs after a change); command `/deps-update` (minor updates)
 - Commits are Conventional Commits and short: [docs/memory/feedback-short-commit-messages.md](docs/memory/feedback-short-commit-messages.md)
 

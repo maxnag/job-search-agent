@@ -58,6 +58,7 @@ describe('NotificationRepository (e2e)', () => {
       country: 'IL',
       workMode: WorkModeEnum.HYBRID,
       url: vacancy.vacancy_url,
+      textURL: null,
       stage: VacancyStageEnum.EXTRACTED,
       vacancyMatchId: matchId,
       verdict: VacancyMatchVerdictEnum.FIT,
@@ -78,6 +79,14 @@ describe('NotificationRepository (e2e)', () => {
       await insertMatch(database, vacancy.vacancy_id, older, { vacancy_match_verdict: VacancyMatchVerdictEnum.FIT });
 
       await expect(repository.findVacancyNotice(vacancy.vacancy_id)).resolves.toMatchObject({ verdict: VacancyMatchVerdictEnum.ALMOST });
+    });
+
+    it('carries the posting on the company board of a vacancy from an e-mail', async () => {
+      const vacancy = await insertVacancy(database, sourceId, { vacancy_text_url: 'https://jobs.lever.co/northwind/a1' });
+
+      await expect(repository.findVacancyNotice(vacancy.vacancy_id)).resolves.toMatchObject({
+        textURL: 'https://jobs.lever.co/northwind/a1'
+      });
     });
 
     it('gives a vacancy never matched without a verdict and with no findings', async () => {

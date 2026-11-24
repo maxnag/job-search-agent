@@ -11,7 +11,10 @@ import { sources } from './sources.table.js';
  * was first listed, empty when none was, and never changes; the same title in two countries is two vacancies.
  * `vacancy_data` is the extraction of its page, `vacancy_text_hash` tells a
  * changed page from the same one, `vacancy_checked_at` is when its page was last read. `vacancy_external_id` is the id
- * of the position in the applicant tracking system of an `ats` source, null for other sources
+ * of the position in the applicant tracking system of an `ats` source, null for other sources. A vacancy from a job
+ * mail whose `vacancy_url` is never opened (LinkedIn, Glassdoor) is read from `vacancy_text_url` — the same position on
+ * the board of the company, found by a web search; `vacancy_text_searched_at` and `vacancy_text_searches` are when and
+ * how many times that search ran
  */
 export const vacancies = pgTable(
   'vacancies',
@@ -39,6 +42,9 @@ export const vacancies = pgTable(
     vacancy_last_seen_at: timestamp('vacancy_last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     vacancy_closed_at: timestamp('vacancy_closed_at', { withTimezone: true }),
     vacancy_checked_at: timestamp('vacancy_checked_at', { withTimezone: true }),
+    vacancy_text_url: text('vacancy_text_url'),
+    vacancy_text_searched_at: timestamp('vacancy_text_searched_at', { withTimezone: true }),
+    vacancy_text_searches: integer('vacancy_text_searches').notNull().default(0),
     ...timestampColumns()
   },
   table => [

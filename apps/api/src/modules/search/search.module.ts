@@ -30,6 +30,13 @@ import { SourceScanOrchestrator } from './services/source-scan.orchestrator.js';
     SourceRegistrationService,
     SourceScanOrchestrator
   ],
-  exports: [ATSListingService, ProfilePreferencesService, SourceRegistrationService, SourceScanOrchestrator, SourceRepository]
+  exports: [
+    ATSListingService,
+    ListingExtractionService,
+    ProfilePreferencesService,
+    SourceRegistrationService,
+    SourceScanOrchestrator,
+    SourceRepository
+  ]
 })
 export class SearchModule {}

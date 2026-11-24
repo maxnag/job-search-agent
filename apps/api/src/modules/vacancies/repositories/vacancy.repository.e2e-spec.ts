@@ -64,6 +64,28 @@ describe('VacancyRepository (e2e)', () => {
     await expect(repository.findKnown([], [])).resolves.toEqual([]);
   });
 
+  it('lists the vacancies of an e-mail whose description is due to be looked up again', async () => {
+    const before = new Date('2026-11-17T12:00:00Z');
+    const earlier = new Date('2026-11-10T12:00:00Z');
+    const due = await insertVacancy(database, sourceId, { vacancy_text_searched_at: earlier, vacancy_text_searches: 1 });
+
+    await insertVacancy(database, sourceId);
+    await insertVacancy(database, sourceId, { vacancy_text_searched_at: new Date('2026-11-20T12:00:00Z'), vacancy_text_searches: 1 });
+    await insertVacancy(database, sourceId, { vacancy_text_searched_at: earlier, vacancy_text_searches: 3 });
+    await insertVacancy(database, sourceId, {
+      vacancy_text_searched_at: earlier,
+      vacancy_text_searches: 1,
+      vacancy_text_url: 'https://jobs.lever.co/n/a1'
+    });
+    await insertVacancy(database, sourceId, {
+      vacancy_text_searched_at: earlier,
+      vacancy_text_searches: 1,
+      vacancy_stage: VacancyStageEnum.CLOSED
+    });
+
+    await expect(repository.findTextSearchDue(before, 3)).resolves.toEqual([due.vacancy_id]);
+  });
+
   it('lists the open vacancies of a source only', async () => {
     const open = await insertVacancy(database, sourceId);
     const other = (await insertSource(database)).source_id;

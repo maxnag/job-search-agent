@@ -100,6 +100,12 @@ describe('PipelineEventsService (unit)', () => {
     expect(notifyQueue.add).toHaveBeenCalledWith(JobNameEnum.SOURCE_BLOCKED, { sourceId: 1 });
   });
 
+  it('tells that the mailbox refused the password', async () => {
+    await subjectUnderTest.jobMailDisabled();
+
+    expect(notifyQueue.add).toHaveBeenCalledWith(JobNameEnum.JOB_MAIL_DISABLED, {});
+  });
+
   it('offers a company board the discovery found', async () => {
     await subjectUnderTest.sourceCandidateProposed({ sourceCandidateId: 5 });
 

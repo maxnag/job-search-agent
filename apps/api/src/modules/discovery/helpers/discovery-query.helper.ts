@@ -7,7 +7,7 @@ import type { IProfilePreferencesEntry } from '../../search/interfaces/profile-p
  *
  * @type {readonly string[]}
  */
-const BOARD_SITES: readonly string[] = ['comeet.com/jobs', 'job-boards.greenhouse.io', 'jobs.lever.co'];
+export const ATS_BOARD_SITES: readonly string[] = ['comeet.com/jobs', 'job-boards.greenhouse.io', 'jobs.lever.co'];
 
 /**
  * Words a board title of a role family is found by; null for the families a search would not find well
@@ -73,7 +73,7 @@ export function buildDiscoveryQueries(profiles: readonly IProfilePreferencesEntr
 
   for (const place of queryPlaces(profiles)) {
     for (const role of roles) {
-      for (const site of BOARD_SITES) {
+      for (const site of ATS_BOARD_SITES) {
         const remote = place.remoteOnly ? ' remote' : '';
 
         queries.push(`site:${site} ${place.country}${remote} "${role}"`);

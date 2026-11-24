@@ -9,6 +9,7 @@ import {
   actionKeyboard,
   formatChangedNotice,
   formatClosedNotice,
+  formatJobMailDisabledNotice,
   formatMatchCard,
   formatSourceBlockedNotice
 } from './vacancy-card.helper.js';
@@ -21,6 +22,7 @@ const NOTICE: IVacancyNotice = {
   country: 'IL',
   workMode: WorkModeEnum.HYBRID,
   url: 'https://careers.example.com/jobs/7?ref=a&b=c',
+  textURL: null,
   stage: VacancyStageEnum.EXTRACTED,
   verdict: VacancyMatchVerdictEnum.FIT,
   reasons: [
@@ -39,6 +41,19 @@ describe('formatMatchCard', () => {
   it('shows the verdict, title, company, place, matched languages and the link', () => {
     expect(formatMatchCard(NOTICE)).toBe(
       ['✅ Fits', '<b>Senior Backend Developer</b>', 'Northwind', '📍 Haifa, IL · hybrid', '💻 TypeScript', LINK].join('\n')
+    );
+  });
+
+  it('links the posting on the company board next to the vacancy when its description was read there', () => {
+    const card = formatMatchCard({
+      ...NOTICE,
+      url: 'https://www.linkedin.com/jobs/view/4100000001/',
+      textURL: 'https://jobs.lever.co/northwind/a1?x=1&y=2'
+    });
+
+    expect(card.split('\n').at(-1)).toBe(
+      '<a href="https://www.linkedin.com/jobs/view/4100000001/">Open the vacancy</a> · ' +
+        '<a href="https://jobs.lever.co/northwind/a1?x=1&amp;y=2">On the company board</a>'
     );
   });
 
@@ -146,6 +161,16 @@ describe('formatSourceBlockedNotice', () => {
     expect(
       formatSourceBlockedNotice({ name: 'Northwind', url: 'https://x.example', status: 'blocked_by_robots', error: null }).split('\n')
     ).toHaveLength(4);
+  });
+});
+
+describe('formatJobMailDisabledNotice', () => {
+  it('says the mail is off and which keys to check, without the account', () => {
+    expect(formatJobMailDisabledNotice().split('\n')).toEqual([
+      '📭 Job mail is off',
+      'The mailbox refused the account or its app password.',
+      'Check JOB_MAIL_IMAP_USER and JOB_MAIL_IMAP_PASSWORD in .env, then restart the API.'
+    ]);
   });
 });
 

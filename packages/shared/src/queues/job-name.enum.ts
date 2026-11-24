@@ -11,5 +11,7 @@ export enum JobNameEnum {
   VACANCY_CHANGED = 'vacancy-changed',
   SOURCE_BLOCKED = 'source-blocked',
   SOURCE_CANDIDATE = 'source-candidate',
-  NOTIFY_PENDING = 'notify-pending'
+  NOTIFY_PENDING = 'notify-pending',
+  READ_JOB_MAIL = 'read-job-mail',
+  JOB_MAIL_DISABLED = 'job-mail-disabled'
 }

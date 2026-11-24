@@ -4,6 +4,7 @@ import { SearchModule } from '../search/search.module.js';
 import { VacanciesModule } from '../vacancies/vacancies.module.js';
 import { BraveSearchClient } from './clients/brave-search.client.js';
 import { SourceCandidateRepository } from './repositories/source-candidate.repository.js';
+import { CompanyPostingService } from './services/company-posting.service.js';
 import { DiscoveryOrchestrator } from './services/discovery.orchestrator.js';
 import { SourceCandidateService } from './services/source-candidate.service.js';
 
@@ -13,7 +14,7 @@ import { SourceCandidateService } from './services/source-candidate.service.js';
  */
 @Module({
   imports: [SearchModule, VacanciesModule],
-  providers: [BraveSearchClient, SourceCandidateRepository, DiscoveryOrchestrator, SourceCandidateService],
-  exports: [DiscoveryOrchestrator, SourceCandidateRepository, SourceCandidateService]
+  providers: [BraveSearchClient, SourceCandidateRepository, CompanyPostingService, DiscoveryOrchestrator, SourceCandidateService],
+  exports: [CompanyPostingService, DiscoveryOrchestrator, SourceCandidateRepository, SourceCandidateService]
 })
 export class DiscoveryModule {}

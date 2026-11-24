@@ -102,6 +102,15 @@ export class PipelineEventsService {
   }
 
   /**
+   * Tell the owner the mailbox refused the account — the job mail reading is off until the API starts again
+   *
+   * @returns {Promise<void>}
+   */
+  async jobMailDisabled(): Promise<void> {
+    await this.notifyQueue.add(JobNameEnum.JOB_MAIL_DISABLED, {});
+  }
+
+  /**
    * Offer the owner a company board the discovery found
    *
    * @param {ISourceCandidateJob} job
