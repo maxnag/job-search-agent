@@ -77,15 +77,16 @@ export class RenderedPageFetcher implements IPageFetcher, OnApplicationShutdown 
    * Open the page, wait for the network to settle, scroll while new links appear, return the rendered HTML
    *
    * @param {URL} url
+   * @param {number} [limitMs] Limit instead of `RENDER_TIMEOUT_MS`
    *
-   * @throws {Error} If the browser does not start or the page does not load within `RENDER_TIMEOUT_MS`
+   * @throws {Error} If the browser does not start or the page does not load within the limit
    *
    * @returns {Promise<IFetchedPage>}
    */
-  async fetch(url: URL): Promise<IFetchedPage> {
+  async fetch(url: URL, limitMs?: number): Promise<IFetchedPage> {
     const browser = await this.launch();
     const context = await this.createContext(browser);
-    const timeoutMs = this.configService.get('RENDER_TIMEOUT_MS', { infer: true });
+    const timeoutMs = limitMs ?? this.configService.get('RENDER_TIMEOUT_MS', { infer: true });
     const deadline = Date.now() + timeoutMs;
 
     try {

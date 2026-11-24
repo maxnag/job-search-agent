@@ -3,5 +3,6 @@
  */
 export enum SchedulerIdEnum {
   SCAN_SOURCES = 'scan-sources',
+  DISCOVER_SOURCES = 'discover-sources',
   NOTIFY_PENDING = 'notify-pending'
 }

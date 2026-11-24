@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import type { IEnv } from '../../../config/env.schema.js';
+import { CrawlPaceEnum } from '../enums/crawl-pace.enum.js';
 import { randomDelayMs } from '../helpers/random-delay.helper.js';
 
 /**
@@ -43,13 +44,14 @@ export class HostThrottleService {
    *
    * @param {string} host
    * @param {() => Promise<T>} request
+   * @param {CrawlPaceEnum} [pace] Which pause range applies
    *
    * @template T
    *
    * @returns {Promise<T>}
    */
-  async run<T>(host: string, request: () => Promise<T>): Promise<T> {
-    const turn = this.takeTurn(host, this.tails.get(host), request);
+  async run<T>(host: string, request: () => Promise<T>, pace = CrawlPaceEnum.SITE): Promise<T> {
+    const turn = this.takeTurn(host, this.tails.get(host), request, pace);
 
     this.tails.set(host, Promise.allSettled([turn]));
 
@@ -62,15 +64,21 @@ export class HostThrottleService {
    * @param {string} host
    * @param {Promise<unknown> | undefined} previous
    * @param {() => Promise<T>} request
+   * @param {CrawlPaceEnum} pace
    *
    * @template T
    *
    * @returns {Promise<T>}
    */
-  private async takeTurn<T>(host: string, previous: Promise<unknown> | undefined, request: () => Promise<T>): Promise<T> {
+  private async takeTurn<T>(
+    host: string,
+    previous: Promise<unknown> | undefined,
+    request: () => Promise<T>,
+    pace: CrawlPaceEnum
+  ): Promise<T> {
     await previous;
 
-    const waitMs = this.waitMs(host);
+    const waitMs = this.waitMs(host, pace);
 
     if (waitMs > 0) {
       this.logger.debug({ message: 'Crawl pause', host, waitMs });
@@ -86,23 +94,30 @@ export class HostThrottleService {
   }
 
   /**
-   * How long to wait before the next request to a host: none for the first one
+   * How long to wait before the next request to a host: none for the first one, else a random pause of the pace
    *
    * @param {string} host
+   * @param {CrawlPaceEnum} pace
    *
    * @returns {number}
    */
-  private waitMs(host: string): number {
+  private waitMs(host: string, pace: CrawlPaceEnum): number {
     const finishedAt = this.finishedAt.get(host);
 
     if (finishedAt === undefined) {
       return 0;
     }
 
-    const pauseMs = randomDelayMs(
-      this.configService.get('CRAWL_DELAY_MIN_MS', { infer: true }),
-      this.configService.get('CRAWL_DELAY_MAX_MS', { infer: true })
-    );
+    const pauseMs =
+      pace === CrawlPaceEnum.API
+        ? randomDelayMs(
+            this.configService.get('CRAWL_API_DELAY_MIN_MS', { infer: true }),
+            this.configService.get('CRAWL_API_DELAY_MAX_MS', { infer: true })
+          )
+        : randomDelayMs(
+            this.configService.get('CRAWL_DELAY_MIN_MS', { infer: true }),
+            this.configService.get('CRAWL_DELAY_MAX_MS', { infer: true })
+          );
 
     return Math.max(0, finishedAt + pauseMs - Date.now());
   }

@@ -125,18 +125,21 @@ export function extractLinkCandidates(html: string, pageURL: string, maxLinks: n
 }
 
 /**
- * The prompt of the listing step: the page address and one numbered line per link
+ * The prompt of the listing step: the page address and one numbered line per link; the URLs are left out when they
+ * tell nothing more — the positions of a board are all postings
  *
  * @param {string} pageURL
  * @param {readonly ILinkCandidate[]} candidates
+ * @param {boolean} [withURLs]
  *
  * @returns {string}
  */
-export function renderLinkCandidates(pageURL: string, candidates: readonly ILinkCandidate[]): string {
+export function renderLinkCandidates(pageURL: string, candidates: readonly ILinkCandidate[], withURLs = true): string {
   const lines = candidates.map((candidate, index) => {
     const around = candidate.context ? ` | around: ${candidate.context}` : '';
+    const url = withURLs ? ` | url: ${candidate.url}` : '';
 
-    return `[${index}] text: ${candidate.text || '(no text)'}${around} | url: ${candidate.url}`;
+    return `[${index}] text: ${candidate.text || '(no text)'}${around}${url}`;
   });
 
   return [`Page: ${pageURL}`, 'Links:', ...lines].join('\n');

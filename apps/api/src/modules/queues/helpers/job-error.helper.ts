@@ -8,10 +8,15 @@ import { CrawlError } from '../../crawler/errors/crawl.error.js';
  * @type {readonly string[]}
  */
 const PERMANENT_CODES: readonly string[] = [
+  'ATS_POSTING_UNKNOWN',
+  'ATS_RESPONSE_INVALID',
+  'BRAVE_SEARCH_DISABLED',
+  'BRAVE_SEARCH_UNAUTHORIZED',
   'LLM_OUTPUT_SCHEMA_INVALID',
   'LLM_OUTPUT_TRUNCATED',
   'PROFILE_PREFERENCES_INVALID',
   'SOURCE_NOT_FOUND',
+  'SOURCE_URL_NOT_ATS',
   'VACANCY_NOT_FOUND'
 ];
 

@@ -54,7 +54,7 @@ describe('ListingExtractionService (unit)', () => {
       providers: [
         ListingExtractionService,
         { provide: LLMClient, useValue: llm },
-        { provide: ConfigService, useValue: createConfigMock({ LISTING_MAX_LINKS: 100 }) }
+        { provide: ConfigService, useValue: createConfigMock({ LISTING_MAX_LINKS: 100, LISTING_BATCH_SIZE: 100 }) }
       ]
     }).compile();
 

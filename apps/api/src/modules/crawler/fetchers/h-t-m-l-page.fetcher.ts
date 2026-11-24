@@ -67,10 +67,11 @@ export class HTMLPageFetcher implements IPageFetcher {
   ) {}
 
   /**
-   * Request the page within `HTTP_TIMEOUT_MS`, following redirects one by one — each hop is checked for a private
-   * address before it is requested
+   * Request the page within `timeoutMs` or `HTTP_TIMEOUT_MS`, following redirects one by one — each hop is checked for
+   * a private address before it is requested
    *
    * @param {URL} url
+   * @param {number} [timeoutMs]
    *
    * @throws {CrawlError} `PRIVATE_ADDRESS` if a hop resolves to a private address
    * @throws {CrawlError} `INVALID_URL` if a redirect leads to anything but http(s)
@@ -78,8 +79,8 @@ export class HTMLPageFetcher implements IPageFetcher {
    *
    * @returns {Promise<IFetchedPage>}
    */
-  async fetch(url: URL): Promise<IFetchedPage> {
-    const signal = AbortSignal.timeout(this.configService.get('HTTP_TIMEOUT_MS', { infer: true }));
+  async fetch(url: URL, timeoutMs?: number): Promise<IFetchedPage> {
+    const signal = AbortSignal.timeout(timeoutMs ?? this.configService.get('HTTP_TIMEOUT_MS', { infer: true }));
     let current = url;
 
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {

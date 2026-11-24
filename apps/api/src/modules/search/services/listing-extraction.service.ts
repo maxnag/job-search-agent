@@ -11,6 +11,7 @@ import { LLMClient } from '../../llm/clients/l-l-m.client.js';
 import { fenceUntrusted } from '../../llm/helpers/untrusted-text.helper.js';
 import { VACANCY_FIELD_LIMITS, clipNullable, clipText } from '../../vacancies/helpers/vacancy-fields.helper.js';
 import { extractLinkCandidates, renderLinkCandidates } from '../helpers/listing-page.helper.js';
+import type { ILinkCandidate } from '../interfaces/link-candidate.interface.js';
 import type { IListedPosition } from '../interfaces/listed-position.interface.js';
 import type { IListingExtraction } from '../interfaces/listing-extraction.interface.js';
 import { vacancyListingSchema } from '../schemas/vacancy-listing.schema.js';
@@ -30,8 +31,9 @@ const PROMPT_URL = new URL('../prompts/vacancy-listing.md', import.meta.url);
 const LINKS_TAG = 'links';
 
 /**
- * Turns a listing page into its positions: the page is reduced to numbered links by code, the LLM picks and
- * classifies the vacancies among them, code maps the numbers back to the URLs
+ * Turns a listing into its positions: a page is reduced to numbered links by code, the LLM picks and classifies the
+ * vacancies among them, code maps the numbers back to the URLs. The positions of an applicant tracking system come as
+ * such links too — the LLM only classifies them
  */
 @Injectable()
 export class ListingExtractionService {
@@ -68,10 +70,61 @@ export class ListingExtractionService {
       return { links: 0, positions: [] };
     }
 
+    return { links: candidates.length, positions: await this.classify(page.url, candidates, sourceName) };
+  }
+
+  /**
+   * The links that are vacancies, classified by the LLM — at most `LISTING_BATCH_SIZE` links per call, so the answer
+   * fits the output limit even when every link is a posting; no link, no call
+   *
+   * @param {string} pageURL Address of the listing the links come from
+   * @param {readonly ILinkCandidate[]} candidates
+   * @param {string} sourceName Company of the positions the listing does not name a company for
+   * @param {boolean} [withURLs] False when every link is a posting and its URL tells the LLM nothing
+   *
+   * @throws {Error} `LLM_OUTPUT_SCHEMA_INVALID` if an answer does not match the schema
+   *
+   * @returns {Promise<IListedPosition[]>}
+   */
+  async classify(pageURL: string, candidates: readonly ILinkCandidate[], sourceName: string, withURLs = true): Promise<IListedPosition[]> {
+    const chunkSize = this.configService.get('LISTING_BATCH_SIZE', { infer: true });
+    const byURL = new Map<string, IListedPosition>();
+
+    for (let start = 0; start < candidates.length; start += chunkSize) {
+      const positions = await this.classifyChunk(pageURL, candidates.slice(start, start + chunkSize), sourceName, withURLs);
+
+      for (const position of positions) {
+        if (!byURL.has(position.url)) {
+          byURL.set(position.url, position);
+        }
+      }
+    }
+
+    return [...byURL.values()];
+  }
+
+  /**
+   * One LLM call over a part of the links
+   *
+   * @param {string} pageURL
+   * @param {readonly ILinkCandidate[]} candidates
+   * @param {string} sourceName
+   * @param {boolean} withURLs
+   *
+   * @throws {Error} `LLM_OUTPUT_SCHEMA_INVALID` if the answer does not match the schema
+   *
+   * @returns {Promise<IListedPosition[]>}
+   */
+  private async classifyChunk(
+    pageURL: string,
+    candidates: readonly ILinkCandidate[],
+    sourceName: string,
+    withURLs: boolean
+  ): Promise<IListedPosition[]> {
     const { data, model } = await this.llmClient.generateBySchema({
       step: LLMStepEnum.LISTING,
       system: await readFile(PROMPT_URL, 'utf8'),
-      prompt: fenceUntrusted(LINKS_TAG, renderLinkCandidates(page.url, candidates)),
+      prompt: fenceUntrusted(LINKS_TAG, renderLinkCandidates(pageURL, candidates, withURLs)),
       schema: vacancyListingSchema
     });
     const byURL = new Map<string, IListedPosition>();
@@ -106,8 +159,8 @@ export class ListingExtractionService {
       this.logger.warn({ message: 'Listing answer named links the page does not have', model, unknownLinks });
     }
 
-    this.logger.debug({ message: 'Listing extracted', model, links: candidates.length, positions: byURL.size });
+    this.logger.debug({ message: 'Listing classified', model, links: candidates.length, positions: byURL.size });
 
-    return { links: candidates.length, positions: [...byURL.values()] };
+    return [...byURL.values()];
   }
 }

@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
+import { SourceCandidateStatusEnum, VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
 
+import { SourceCandidateRepository } from '../../discovery/repositories/source-candidate.repository.js';
 import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
+import { candidateKeyboard, formatSourceCandidateCard } from '../helpers/source-candidate-card.helper.js';
 import {
   actionKeyboard,
   formatChangedNotice,
@@ -15,8 +17,9 @@ import { TelegramService } from './telegram.service.js';
 
 /**
  * Turns the pipeline events into messages: a card per new `fit` / `almost` verdict, a notice when a vacancy the owner
- * heard of closes or changes, a warning when a source is stopped. Without Telegram nothing is sent and nothing fails —
- * the cards stay unsent and the sweep queues them once the bot is configured
+ * heard of closes or changes, a warning when a source is stopped, a card per company board the discovery proposes.
+ * Without Telegram nothing is sent and nothing fails — the cards stay unsent and the sweep queues them once the bot is
+ * configured
  */
 @Injectable()
 export class NotificationService {
@@ -31,11 +34,13 @@ export class NotificationService {
    * @param {TelegramService} telegramService
    * @param {PipelineEventsService} pipelineEventsService
    * @param {NotificationRepository} notificationRepository
+   * @param {SourceCandidateRepository} sourceCandidateRepository
    */
   constructor(
     private readonly telegramService: TelegramService,
     private readonly pipelineEventsService: PipelineEventsService,
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
+    private readonly sourceCandidateRepository: SourceCandidateRepository
   ) {}
 
   /**
@@ -153,6 +158,32 @@ export class NotificationService {
 
     await this.telegramService.send(formatSourceBlockedNotice(source));
     this.logger.log({ message: 'Source stopped notice sent', sourceId });
+
+    return true;
+  }
+
+  /**
+   * Offer the owner a company board the discovery found; a candidate decided meanwhile is left alone
+   *
+   * @param {number} sourceCandidateId
+   *
+   * @throws {GrammyError} If Telegram refuses the message
+   *
+   * @returns {Promise<boolean>} True when the card was sent
+   */
+  async sendSourceCandidate(sourceCandidateId: number): Promise<boolean> {
+    if (!this.telegramService.isConfigured) {
+      return false;
+    }
+
+    const candidate = await this.sourceCandidateRepository.findOne(sourceCandidateId);
+
+    if (candidate?.source_candidate_status !== SourceCandidateStatusEnum.PROPOSED) {
+      return false;
+    }
+
+    await this.telegramService.send(formatSourceCandidateCard(candidate), candidateKeyboard(candidate.source_candidate_id));
+    this.logger.log({ message: 'Source candidate card sent', sourceCandidateId: candidate.source_candidate_id });
 
     return true;
   }

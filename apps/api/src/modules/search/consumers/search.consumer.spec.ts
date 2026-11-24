@@ -8,6 +8,7 @@ import { JobNameEnum } from '@job-agent/shared';
 
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
+import { DiscoveryOrchestrator } from '../../discovery/services/discovery.orchestrator.js';
 import { SourceScanOutcomeEnum } from '../enums/source-scan-outcome.enum.js';
 import type { IScanSourceJob } from '../interfaces/scan-source-job.interface.js';
 import { SourceScanOrchestrator } from '../services/source-scan.orchestrator.js';
@@ -49,7 +50,11 @@ describe('SearchConsumer (unit)', () => {
   beforeEach(async () => {
     orchestrator = createMock<SourceScanOrchestrator>();
     moduleFixture = await Test.createTestingModule({
-      providers: [SearchConsumer, { provide: SourceScanOrchestrator, useValue: orchestrator }]
+      providers: [
+        SearchConsumer,
+        { provide: SourceScanOrchestrator, useValue: orchestrator },
+        { provide: DiscoveryOrchestrator, useValue: {} }
+      ]
     }).compile();
 
     subjectUnderTest = moduleFixture.get(SearchConsumer);

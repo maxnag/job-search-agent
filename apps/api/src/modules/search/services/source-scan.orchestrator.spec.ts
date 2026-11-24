@@ -27,6 +27,7 @@ import { SourceScanOutcomeEnum } from '../enums/source-scan-outcome.enum.js';
 import type { IListedPosition } from '../interfaces/listed-position.interface.js';
 import type { SourceRowType } from '../interfaces/source-row.interface.js';
 import { SourceRepository } from '../repositories/source.repository.js';
+import { ATSListingService } from './a-t-s-listing.service.js';
 import { ListingExtractionService } from './listing-extraction.service.js';
 import { ProfilePreferencesService } from './profile-preferences.service.js';
 import { SourceScanOrchestrator } from './source-scan.orchestrator.js';
@@ -95,6 +96,7 @@ describe('SourceScanOrchestrator (unit)', () => {
         SourceScanOrchestrator,
         { provide: CrawlerService, useValue: crawler },
         { provide: ListingExtractionService, useValue: listing },
+        { provide: ATSListingService, useValue: {} },
         { provide: ProfilePreferencesService, useValue: preferences },
         { provide: PipelineEventsService, useValue: events },
         { provide: SourceRepository, useValue: sources },

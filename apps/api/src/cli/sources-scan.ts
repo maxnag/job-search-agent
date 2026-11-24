@@ -88,7 +88,7 @@ if (sourceId !== undefined && !Number.isInteger(sourceId)) {
       }
     }
 
-    process.stdout.write(paint('dim', 'The queued vacancies are extracted by the running API (pnpm dev).\n'));
+    process.stdout.write(paint('dim', 'The queued vacancies are extracted by the running API (pnpm api:dev).\n'));
   } catch (error) {
     logger.error(error instanceof Error ? error.message : 'Scan failed', error instanceof Error ? error.stack : undefined);
     process.exitCode = 1;

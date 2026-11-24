@@ -8,6 +8,7 @@ import { JobNameEnum } from '@job-agent/shared';
 import { toJobError } from '../../queues/helpers/job-error.helper.js';
 import { logJobFailure } from '../../queues/helpers/job-failure.helper.js';
 import type { ISourceBlockedJob } from '../../vacancies/interfaces/source-blocked-job.interface.js';
+import type { ISourceCandidateJob } from '../../vacancies/interfaces/source-candidate-job.interface.js';
 import type { IVacancyJob } from '../../vacancies/interfaces/vacancy-job.interface.js';
 import type { IVacancyMatchJob } from '../../vacancies/interfaces/vacancy-match-job.interface.js';
 import { NotificationService } from '../services/notification.service.js';
@@ -22,7 +23,7 @@ const PERMANENT_TELEGRAM_CODES: ReadonlySet<number> = new Set([400, 401, 403, 40
 /**
  * Data of any `notify` job
  */
-type NotifyJobDataType = Partial<IVacancyJob & IVacancyMatchJob & ISourceBlockedJob>;
+type NotifyJobDataType = Partial<IVacancyJob & IVacancyMatchJob & ISourceBlockedJob & ISourceCandidateJob>;
 
 /**
  * Worker of the `notify` queue: one message at a time, at most one a second — the pace Telegram allows a chat
@@ -115,6 +116,9 @@ export class NotifyConsumer extends WorkerHost {
         return this.notificationService.sendChanged(data.vacancyId ?? 0);
       case JobNameEnum.SOURCE_BLOCKED:
         return this.notificationService.sendSourceBlocked(data.sourceId ?? 0);
+
+      case JobNameEnum.SOURCE_CANDIDATE:
+        return this.notificationService.sendSourceCandidate(data.sourceCandidateId ?? 0);
       case JobNameEnum.NOTIFY_PENDING:
         return this.notificationService.queuePending();
       default:

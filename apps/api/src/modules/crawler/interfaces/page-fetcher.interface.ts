@@ -17,8 +17,9 @@ export interface IPageFetcher {
    * Load the page
    *
    * @param {URL} url
+   * @param {number} [timeoutMs] Limit of this request instead of the mode's own
    *
    * @returns {Promise<IFetchedPage>}
    */
-  fetch(url: URL): Promise<IFetchedPage>;
+  fetch(url: URL, timeoutMs?: number): Promise<IFetchedPage>;
 }

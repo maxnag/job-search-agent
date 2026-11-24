@@ -10,6 +10,8 @@ export * from './skills/normalize-skill.helper.js';
 export * from './skills/skill-definition.interface.js';
 export * from './skills/skill-kind.enum.js';
 export * from './skills/skill.dictionary.js';
+export * from './sources/a-t-s-kind.enum.js';
+export * from './sources/source-candidate-status.enum.js';
 export * from './sources/source-fetch-mode.enum.js';
 export * from './sources/source-status.enum.js';
 export * from './vacancies/hebrew-requirement.enum.js';

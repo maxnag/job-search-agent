@@ -12,7 +12,7 @@ import type { ISourceNotice, IVacancyNotice } from '../interfaces/vacancy-notice
  *
  * @type {string}
  */
-export const ACTION_PREFIX = 'action';
+const ACTION_PREFIX = 'action';
 
 /**
  * Callback data of an action button, parsed by the bot
@@ -61,7 +61,7 @@ const ACTION_LABELS: Readonly<Record<VacancyActionKindEnum, string>> = {
  *
  * @returns {string}
  */
-function escapeHTML(text: string): string {
+export function escapeHTML(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 

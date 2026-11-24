@@ -5,6 +5,7 @@ import type { Queue } from 'bullmq';
 import { JobNameEnum } from '@job-agent/shared';
 
 import type { ISourceBlockedJob } from '../interfaces/source-blocked-job.interface.js';
+import type { ISourceCandidateJob } from '../interfaces/source-candidate-job.interface.js';
 import type { IVacancyJob } from '../interfaces/vacancy-job.interface.js';
 import type { IVacancyMatchJob } from '../interfaces/vacancy-match-job.interface.js';
 import { VacancyRepository } from '../repositories/vacancy.repository.js';
@@ -98,5 +99,16 @@ export class PipelineEventsService {
    */
   async sourceBlocked(sourceId: number): Promise<void> {
     await this.notifyQueue.add(JobNameEnum.SOURCE_BLOCKED, { sourceId } satisfies ISourceBlockedJob);
+  }
+
+  /**
+   * Offer the owner a company board the discovery found
+   *
+   * @param {ISourceCandidateJob} job
+   *
+   * @returns {Promise<void>}
+   */
+  async sourceCandidateProposed(job: ISourceCandidateJob): Promise<void> {
+    await this.notifyQueue.add(JobNameEnum.SOURCE_CANDIDATE, job);
   }
 }

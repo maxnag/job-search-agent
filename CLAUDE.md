@@ -87,8 +87,10 @@ pnpm cv:import <file> --profile <name> # resume → new version of a profile (PD
 pnpm sources:scan [--source <id>] [--force]  # scan career pages now; the running API extracts what was queued
 pnpm vacancies:report [--source <id>]  # every position with its stage and reason — check the filters drop nothing
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
-pnpm dev                               # tsc -b --watch + API with node --watch (Bull Board at BULL_BOARD_PATH)
-pnpm build                             # tsc -b over the project references
+pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
+pnpm api:start                         # build, then the API without watch (the owner's Mac)
+pnpm build                             # tsc -b over the project references — every package and app
+pnpm api:build                         # the API and the packages it uses, with its prompts
 pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
 pnpm lint:fix && pnpm prettier:fix
 pnpm test                              # Vitest unit tests; env from .env.example, never from .env

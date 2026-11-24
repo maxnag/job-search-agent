@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
 
+import { SourceCandidateRepository } from '../../discovery/repositories/source-candidate.repository.js';
 import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
 import type { IMatchCard, IVacancyNotice } from '../interfaces/vacancy-notice.interface.js';
 import { NotificationRepository } from '../repositories/notification.repository.js';
@@ -42,7 +43,8 @@ describe('NotificationService (unit)', () => {
         NotificationService,
         { provide: TelegramService, useValue: telegram },
         { provide: PipelineEventsService, useValue: events },
-        { provide: NotificationRepository, useValue: notifications }
+        { provide: NotificationRepository, useValue: notifications },
+        { provide: SourceCandidateRepository, useValue: {} }
       ]
     }).compile();
 
@@ -65,7 +67,8 @@ describe('NotificationService (unit)', () => {
         NotificationService,
         { provide: TelegramService, useValue: createMock<TelegramService>({ isConfigured: false }) },
         { provide: PipelineEventsService, useValue: events },
-        { provide: NotificationRepository, useValue: notifications }
+        { provide: NotificationRepository, useValue: notifications },
+        { provide: SourceCandidateRepository, useValue: {} }
       ]
     }).compile();
     subjectUnderTest = moduleFixture.get(NotificationService);

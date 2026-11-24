@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VacancyActionKindEnum } from '@job-agent/shared';
 
 import { createConfigMock } from '../../../../test/config-service.mock.js';
+import { SourceCandidateService } from '../../discovery/services/source-candidate.service.js';
 import { TelegramService } from './telegram.service.js';
 import { VacancyActionService } from './vacancy-action.service.js';
 
@@ -59,6 +60,7 @@ describe('TelegramService (unit)', () => {
       providers: [
         TelegramService,
         { provide: VacancyActionService, useValue: actions },
+        { provide: SourceCandidateService, useValue: {} },
         { provide: ConfigService, useValue: createConfigMock(env) }
       ]
     }).compile();

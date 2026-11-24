@@ -1,7 +1,8 @@
 import type { RoleFamilyEnum, SeniorityLevelEnum, WorkModeEnum } from '@job-agent/shared';
 
 /**
- * A position of a listing page, classified by the LLM from its title and the text around it
+ * A position of a listing, classified by the LLM from its title and the text around it; a position of an
+ * applicant tracking system dropped by its place before the LLM has no role family and no level
  */
 export interface IListedPosition {
   /**
@@ -10,6 +11,13 @@ export interface IListedPosition {
    * @var {string}
    */
   readonly url: string;
+
+  /**
+   * Id of the position in the applicant tracking system of an `ats` source
+   *
+   * @var {string | undefined}
+   */
+  readonly externalId?: string;
 
   /**
    * Title as the page writes it
@@ -47,11 +55,11 @@ export interface IListedPosition {
   readonly workMode: WorkModeEnum | null;
 
   /**
-   * Family of the role
+   * Family of the role, null when the position was not classified
    *
-   * @var {RoleFamilyEnum}
+   * @var {RoleFamilyEnum | null}
    */
-  readonly roleFamily: RoleFamilyEnum;
+  readonly roleFamily: RoleFamilyEnum | null;
 
   /**
    * Level named in the title

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HebrewRequirementEnum, SourceFetchModeEnum, SourceStatusEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
 
 import { createConfigMock } from '../../../../test/config-service.mock.js';
+import { ATSClientRegistry } from '../../ats/services/a-t-s-client.registry.js';
 import { CrawlErrorCodeEnum } from '../../crawler/enums/crawl-error-code.enum.js';
 import { CrawlError } from '../../crawler/errors/crawl.error.js';
 import { CrawlerService } from '../../crawler/services/crawler.service.js';
@@ -78,6 +79,7 @@ describe('VacancyExtractionOrchestrator (unit)', () => {
       providers: [
         VacancyExtractionOrchestrator,
         { provide: CrawlerService, useValue: crawler },
+        { provide: ATSClientRegistry, useValue: {} },
         { provide: VacancyExtractionService, useValue: extraction },
         { provide: VacancyMatchingService, useValue: matching },
         { provide: PipelineEventsService, useValue: events },
