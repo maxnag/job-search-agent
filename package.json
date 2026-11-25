@@ -21,6 +21,7 @@
     "sources:discover": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-discover.js",
     "sources:scan": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/sources-scan.js",
     "vacancies:report": "pnpm --silent api:build && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/cli/vacancies-report.js",
+    "mcp:jobs-db": "pnpm --silent api:build >&2 && node --env-file-if-exists=.env --enable-source-maps apps/api/dist/mcp/jobs-db.server.js",
     "db:generate": "pnpm --filter @job-agent/db generate",
     "db:migrate": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate",
     "db:migrate:test": "tsc -b packages/db/tsconfig.build.json && pnpm --filter @job-agent/db migrate:test",

@@ -42,11 +42,15 @@ export class VacancyReportRepository {
         vacancyId: vacancies.vacancy_id,
         sourceId: vacancies.source_id,
         title: vacancies.vacancy_title,
+        company: vacancies.vacancy_company,
         city: vacancies.vacancy_city,
         country: vacancies.vacancy_country,
         workMode: vacancies.vacancy_work_mode,
         stage: vacancies.vacancy_stage,
         skipReason: vacancies.vacancy_skip_reason,
+        url: vacancies.vacancy_url,
+        textURL: vacancies.vacancy_text_url,
+        firstSeenAt: vacancies.vacancy_first_seen_at,
         rank: sql<number>`row_number() over (partition by ${vacancies.source_id} order by ${vacancies.vacancy_id} desc)`.as('vacancy_rank')
       })
       .from(vacancies)
@@ -73,11 +77,15 @@ export class VacancyReportRepository {
           vacancyId: ranked.vacancyId,
           sourceId: ranked.sourceId,
           title: ranked.title,
+          company: ranked.company,
           city: ranked.city,
           country: ranked.country,
           workMode: ranked.workMode,
           stage: ranked.stage,
-          skipReason: ranked.skipReason
+          skipReason: ranked.skipReason,
+          url: ranked.url,
+          textURL: ranked.textURL,
+          firstSeenAt: ranked.firstSeenAt
         })
         .from(ranked)
         .where(withinLimit)
@@ -122,6 +130,7 @@ export class VacancyReportRepository {
       filter.country === undefined ? undefined : eq(vacancies.vacancy_country, filter.country.toUpperCase()),
       filter.workMode === undefined ? undefined : eq(vacancies.vacancy_work_mode, filter.workMode),
       filter.title === undefined ? undefined : ilike(vacancies.vacancy_title, this.containing(filter.title)),
+      filter.company === undefined ? undefined : ilike(vacancies.vacancy_company, this.containing(filter.company)),
       filter.sinceDays === undefined
         ? undefined
         : gte(vacancies.vacancy_first_seen_at, sql`now() - make_interval(days => ${filter.sinceDays})`)

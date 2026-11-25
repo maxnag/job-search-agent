@@ -253,6 +253,9 @@ importers:
       '@job-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@job-agent/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@job-agent/shared':
         specifier: workspace:*
         version: link:../../packages/shared

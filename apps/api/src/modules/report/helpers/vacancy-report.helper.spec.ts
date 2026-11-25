@@ -34,11 +34,15 @@ function vacancy(changes: Partial<IReportVacancy> = {}): IReportVacancy {
     vacancyId: 7,
     sourceId: 1,
     title: 'Backend Developer',
+    company: 'Northwind',
     city: 'Haifa',
     country: 'IL',
     workMode: WorkModeEnum.HYBRID,
     stage: VacancyStageEnum.EXTRACTED,
     skipReason: null,
+    url: 'https://jobs.example.com/7',
+    textURL: null,
+    firstSeenAt: new Date('2026-11-20T08:00:00Z'),
     ...changes
   };
 }

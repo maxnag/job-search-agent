@@ -17,6 +17,7 @@
     "@bull-board/express": "^9.13.1",
     "@bull-board/nestjs": "^9.13.1",
     "@job-agent/db": "workspace:*",
+    "@job-agent/mcp": "workspace:*",
     "@job-agent/shared": "workspace:*",
     "@nestjs/bullmq": "^12.0.2",
     "@nestjs/common": "^12.5.0",

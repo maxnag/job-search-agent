@@ -144,17 +144,17 @@ export class NotificationRepository {
   }
 
   /**
-   * Store a button the owner pressed
+   * Store a choice of the owner; a choice made without a card has no message
    *
    * @param {number} vacancyId
    * @param {VacancyActionKindEnum} kind
-   * @param {number} messageId
+   * @param {number} [messageId]
    *
    * @returns {Promise<void>}
    */
-  async createAction(vacancyId: number, kind: VacancyActionKindEnum, messageId: number): Promise<void> {
+  async createAction(vacancyId: number, kind: VacancyActionKindEnum, messageId?: number): Promise<void> {
     await this.databaseService.db
       .insert(vacancyActions)
-      .values({ vacancy_id: vacancyId, vacancy_action_kind: kind, vacancy_action_message_id: messageId });
+      .values({ vacancy_id: vacancyId, vacancy_action_kind: kind, vacancy_action_message_id: messageId ?? null });
   }
 }

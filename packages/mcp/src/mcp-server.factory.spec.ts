@@ -37,16 +37,16 @@ describe('startStdioServer', () => {
   it('names the server after the project and reports the package version', async () => {
     const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
 
-    await startStdioServer(MCPServerNameEnum.JOBS_DB);
+    await startStdioServer(MCPServerNameEnum.JOBS_DB, () => undefined);
 
     expect(mcp.info).toHaveBeenCalledWith({ name: 'job-agent-jobs-db', version });
   });
 
   it('serves over stdio and writes its own message to stderr only', async () => {
-    await startStdioServer(MCPServerNameEnum.GMAIL);
+    await startStdioServer(MCPServerNameEnum.JOBS_DB, () => undefined);
 
     expect(mcp.transport).toHaveBeenCalled();
     expect(mcp.connect).toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith('MCP server gmail is serving on stdio');
+    expect(console.error).toHaveBeenCalledWith('MCP server jobs-db is serving on stdio');
   });
 });
