@@ -209,7 +209,8 @@ tuned row survives `pnpm db:seed`.
 **Context:** bumping versions in every commit conflicts between branches and on `--amend`.
 
 **Decision:** Conventional Commits (commitlint hook); release-please keeps a release PR with one version for the
-monorepo and `CHANGELOG.md`; its merge tags `vX.Y.Z` and builds the `apps/api` image to GHCR after a Trivy scan.
+monorepo and `CHANGELOG.md`; its merge tags `vX.Y.Z` and builds the `apps/api` image to GHCR after a Trivy scan. The image part is superseded
+by ADR-024.
 
 **Consequences:**
 - (+) A version is bumped once, in the release PR; history drives the changelog
@@ -521,3 +522,22 @@ cannot import the application, so servers inside `packages/mcp` would duplicate 
 - (+) The owner's questions need no SQL and no new UI; a choice made in a conversation counts like a button
 - (−) A server starts a Nest context (about a second) and needs the built API (`pnpm api:build`)
 - (−) The client sees everything the tools return — the vacancies, verdicts and profile names go to the cloud model
+
+---
+
+## ADR-024: No image — the project runs only on the owner's machine
+
+**Status:** Accepted (supersedes the image part of ADR-013)
+
+**Context:** the API, the MCP servers, Playwright and Ollama run on the host of the owner's Mac; Docker holds only
+Postgres, Redis, Loki and Grafana. There is no production and no deploy. The `apps/api` image was built on every
+release and on every PR that touched the dependencies, scanned by Trivy and pushed to GHCR — and never run.
+
+**Decision:** no `Dockerfile`; CI checks the code only, a release is the version bump, `CHANGELOG.md` and the tag.
+Dependencies stay checked by `pnpm audit` in CI; the one-week delay still applies to the images of
+`docker-compose.yml`.
+
+**Consequences:**
+- (+) Shorter CI and release runs; no image to keep secure that nobody uses
+- (−) `APP_VERSION` is no longer set by a build — `/health` and the logs say `dev` unless it is set by hand
+- (−) A deploy, if it ever comes, starts with a new image and a new ADR
