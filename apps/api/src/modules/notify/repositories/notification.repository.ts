@@ -144,17 +144,35 @@ export class NotificationRepository {
   }
 
   /**
-   * Store a choice of the owner; a choice made without a card has no message
+   * Store a choice of the owner unless it repeats the latest choice about the vacancy; a choice made without a card
+   * has no message. The vacancy row is locked for the check, so two channels choosing at once store one row
    *
    * @param {number} vacancyId
    * @param {VacancyActionKindEnum} kind
    * @param {number} [messageId]
    *
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} false when the latest choice was already this one
    */
-  async createAction(vacancyId: number, kind: VacancyActionKindEnum, messageId?: number): Promise<void> {
-    await this.databaseService.db
-      .insert(vacancyActions)
-      .values({ vacancy_id: vacancyId, vacancy_action_kind: kind, vacancy_action_message_id: messageId ?? null });
+  async createAction(vacancyId: number, kind: VacancyActionKindEnum, messageId?: number): Promise<boolean> {
+    return this.databaseService.db.transaction(async tx => {
+      await tx.select({ vacancyId: vacancies.vacancy_id }).from(vacancies).where(eq(vacancies.vacancy_id, vacancyId)).for('no key update');
+
+      const [latest] = await tx
+        .select({ kind: vacancyActions.vacancy_action_kind })
+        .from(vacancyActions)
+        .where(eq(vacancyActions.vacancy_id, vacancyId))
+        .orderBy(desc(vacancyActions.vacancy_action_id))
+        .limit(1);
+
+      if (latest?.kind === kind) {
+        return false;
+      }
+
+      await tx
+        .insert(vacancyActions)
+        .values({ vacancy_id: vacancyId, vacancy_action_kind: kind, vacancy_action_message_id: messageId ?? null });
+
+      return true;
+    });
   }
 }

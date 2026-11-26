@@ -189,9 +189,10 @@ export class TelegramService implements OnApplicationBootstrap, OnApplicationShu
     const [, vacancyId, kind] = ACTION_DATA.exec(context.callbackQuery.data) ?? [];
     const action = kind as VacancyActionKindEnum;
 
-    await this.vacancyActionService.record(+(vacancyId ?? 0), action, message.message_id);
+    const recorded = await this.vacancyActionService.record(+(vacancyId ?? 0), action, message.message_id);
+
     await this.tick(context, actionKeyboard(+(vacancyId ?? 0), action));
-    await context.answerCallbackQuery({ text: 'Saved' });
+    await context.answerCallbackQuery({ text: recorded ? 'Saved' : 'Already saved' });
   }
 
   /**
