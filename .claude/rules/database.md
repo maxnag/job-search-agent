@@ -26,7 +26,7 @@ paths:
       `pg_dump` before a risky one (ADR-014)
 - [ ] What the schema cannot describe (extensions, functions, triggers) goes into
       `pnpm db:generate --custom --name <what-it-does>` — an empty SQL file in the same chain, written by hand
-- [ ] Migrations never run on application start — only `pnpm db:migrate` (`node dist/migrate.js` in the image)
+- [ ] Migrations never run on application start — only `pnpm db:migrate`
 - [ ] Tests use `job_agent_test` (`pnpm db:migrate:test`), never the dev database
 
 ## Seeds

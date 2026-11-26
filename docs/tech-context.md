@@ -5,7 +5,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 
 | What | Choice | Installed | Where |
 |---|---|---|---|
-| Runtime | Node.js | 24 LTS (`.nvmrc`), image `node:24.22.3-bookworm-slim` | host |
+| Runtime | Node.js | 24 LTS (`.nvmrc`) | host |
 | Package manager | pnpm workspaces | 12.18 | host |
 | Language | TypeScript, ESM (`module: nodenext`) | 6.0.3 — 7.x is not supported by `typescript-eslint` yet | host |
 | Backend | NestJS (`core`, `common`, `platform-express`, `config`) | 12.5.0, config 12.1.1 | host |
@@ -56,8 +56,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 
 Ollama runs on the host because Docker on macOS has no access to Metal; NestJS reaches it at `OLLAMA_URL`.
 Every container port is bound to `127.0.0.1` only; Loki and Grafana run without authentication for that reason.
-The image of `apps/api` (`Dockerfile`) is the release artifact; Chromium is installed in it by the `playwright` of
-the lockfile. Postgres creates the `job_agent_test` database on the first start of an empty volume
+Nothing of the project runs in an image of its own (ADR-024). Postgres creates the `job_agent_test` database on the first start of an empty volume
 (`docker/postgres/init`); an existing volume needs `CREATE DATABASE job_agent_test` by hand.
 
 ## Environment variables
@@ -69,7 +68,7 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 |---|---|
 | `NODE_ENV` | `development` \| `test` \| `production`; in production `/health` shows only `status` and `version` |
 | `APP_PORT` | HTTP port of the API |
-| `APP_VERSION` | version reported by `/health`; set by the image build, `dev` otherwise |
+| `APP_VERSION` | version reported by `/health` and in the logs; `dev` when not set |
 | `TZ` | time zone of the app process and of every container (`Asia/Jerusalem` / `Europe/Kyiv`); Postgres also gets it as `timezone`, so dates in the database show in local time |
 | `LOG_LEVEL` | `trace` … `fatal`, default `info` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint of Loki (`http://localhost:3100/otlp`; its port follows `LOKI_PORT`); empty — stdout only |

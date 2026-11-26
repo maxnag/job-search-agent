@@ -105,8 +105,8 @@ ollama pull qwen3:9b && ollama pull qwen3:27b  # Mac only, then LLM_PROVIDER=oll
 ```
 
 **Releases:** commits and PR titles follow Conventional Commits; release-please keeps a release PR open on `main`.
-Merging it bumps every `package.json`, writes `CHANGELOG.md`, tags `vX.Y.Z` and pushes the image
-`ghcr.io/maxnag/job-search-agent-api` after a Trivy scan. Versions are never edited by hand.
+Merging it bumps every `package.json`, writes `CHANGELOG.md` and tags `vX.Y.Z`; no image is built — the project runs only
+on the owner's machine (ADR-024). Versions are never edited by hand.
 
 ## Architecture
 
@@ -145,7 +145,6 @@ packages/db/         Drizzle schema, SQL migrations, seeds, client
 packages/mcp/        MCP wiring: the stdio server factory, server names, tool answer helpers
 docker/              Postgres init, Loki config, Grafana provisioning and dashboard
 docker-compose.yml   postgres, redis, loki, grafana
-Dockerfile           image of apps/api (release artifact)
 .github/             CI, release-please, dependabot
 pnpm-workspace.yaml  workspaces + minimumReleaseAge
 ```
