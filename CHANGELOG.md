@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/maxnag/job-search-agent/compare/v0.8.0...v0.9.0) (2026-11-26)
+
+
+### Features
+
+* **web:** next.js web ui skeleton with mantine and two languages ([#27](https://github.com/maxnag/job-search-agent/issues/27)) ([fe02e16](https://github.com/maxnag/job-search-agent/commit/fe02e166a4d4d40713e882f00d4a3d67a0e5c201))
+
 ## [0.8.0](https://github.com/maxnag/job-search-agent/compare/v0.7.0...v0.8.0) (2026-11-26)
 
 
