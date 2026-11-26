@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/maxnag/job-search-agent/compare/v0.7.0...v0.8.0) (2026-11-26)
+
+
+### Features
+
+* **api:** jobs-db MCP server over stdio ([#22](https://github.com/maxnag/job-search-agent/issues/22)) ([462f763](https://github.com/maxnag/job-search-agent/commit/462f763fa2d58dd593750245724d22c7e9bb936c))
+
+
+### Bug Fixes
+
+* **api:** record a repeated vacancy action once ([#26](https://github.com/maxnag/job-search-agent/issues/26)) ([74da8c8](https://github.com/maxnag/job-search-agent/commit/74da8c865a1a5f5d6bda2c68f68fe79f751851ef))
+
 ## [0.7.0](https://github.com/maxnag/job-search-agent/compare/v0.6.0...v0.7.0) (2026-11-24)
 
 
