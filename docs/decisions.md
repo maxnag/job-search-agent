@@ -501,7 +501,8 @@ cannot import the application, so servers inside `packages/mcp` would duplicate 
 - **`jobs-db` reads, and writes one thing:** six read tools (`find_vacancies`, `get_vacancy`, `list_applications`,
   `pipeline_summary`, `list_sources`, `list_source_candidates`) and `record_action` — the owner's choice
   (`applied` / `interested` / `skipped`) stored exactly as a card button stores it, without a Telegram message
-  (`vacancy_action_message_id` is nullable). Nothing else can be changed or deleted through MCP
+  (`vacancy_action_message_id` is nullable). A repeat of the latest choice about a vacancy, from any channel, is not
+  stored again. Nothing else can be changed or deleted through MCP
 - **A tool is one class** with its private input and output Zod schemas; the SDK validates the input and checks the
   output. The answer is `structuredContent` plus a one-line summary and the same JSON as text. A list is capped at
   `MCP_MAX_ROWS` whatever the client asks, with the total

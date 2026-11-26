@@ -46,7 +46,9 @@ const OUTPUT = {
     .array(z.object({ profile: z.string(), verdict: z.enum(VacancyMatchVerdictEnum), count: counter() }))
     .describe('Verdicts against the current resume of each profile'),
   bySource: z.array(z.object({ sourceId: z.number().int(), source: z.string(), count: counter() })),
-  actions: z.array(z.object({ kind: z.enum(VacancyActionKindEnum), count: counter() })).describe("The owner's choices"),
+  actions: z
+    .array(z.object({ kind: z.enum(VacancyActionKindEnum), count: counter() }))
+    .describe("Vacancies by the owner's latest choice made in the period"),
   cardsSent: counter().describe('Telegram cards sent')
 };
 
@@ -75,7 +77,7 @@ export class PipelineSummaryTool implements IJobsDBTool {
         title: 'Pipeline summary',
         description:
           'Counters of the job search over the last N days, or over everything: vacancies by stage, by verdict per ' +
-          'profile and by source, the choices the owner made and the Telegram cards sent. Use it for "how is the search ' +
+          'profile and by source, the vacancies by the latest choice the owner made and the Telegram cards sent. Use it for "how is the search ' +
           'going" or a weekly review before drilling down with find_vacancies.',
         inputSchema: INPUT,
         outputSchema: OUTPUT,
