@@ -8,8 +8,8 @@ export default {
   tabWidth: 2,
   trailingComma: 'none',
   plugins: ['@trivago/prettier-plugin-sort-imports'],
-  importOrder: ['^node:', '<THIRD_PARTY_MODULES>', '^@job-agent/(.*)$', '^[./]'],
+  importOrder: ['^node:', '<THIRD_PARTY_MODULES>', '^@job-agent/(.*)$', '^@/(.*)$', '^[./]'],
   importOrderSeparation: true,
   importOrderSortSpecifiers: true,
-  importOrderParserPlugins: ['typescript', 'decorators-legacy']
+  importOrderParserPlugins: ['typescript', 'jsx', 'decorators-legacy']
 };

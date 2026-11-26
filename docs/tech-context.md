@@ -22,6 +22,9 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Command output | `cli-table3` (tables), `util.styleText` of Node (colours) | 0.6.5 | host |
 | Command line | `util.parseArgs` of Node as a lexer; `parseCLI` builds the parsing, help and "Did you mean" from one `ICLISpec` | — | host |
 | Agent tools | `@modelcontextprotocol/sdk`, stdio | 1.32.2 | host |
+| Web UI | Next.js (App Router), React | 16.4.6, 19.3.1 | host |
+| Web components | Mantine (`core`, `hooks`), Tabler icons | 9.8.1, 3.52.0 | host |
+| Web languages | `next-intl` (language in the address) | 4.15.3 | host |
 | Logs | `nestjs-pino`, `pino`, `pino-opentelemetry-transport` | 5.3.1, 10.4.0, 4.0.2 | host |
 | Tests | Vitest + `unplugin-swc` (`@swc/core`) | 5.1.0, 2.0.0 (1.16.22) | host |
 | Lint / format | ESLint, `typescript-eslint`, Prettier | 10.15.0, 8.72.2, 3.10.1 | host |
@@ -44,6 +47,10 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
   stdio — Claude Code from `.mcp.json`, Claude Desktop from `claude_desktop_config.json`
   (`docs/claude-desktop-config.example.json`); they read `.env` through `--env-file` and log to stderr only (ADR-023).
   Try one by hand: `npx @modelcontextprotocol/inspector node --env-file=.env apps/api/dist/mcp/jobs-db.server.js`
+- **Web UI:** `apps/web` is built by Next (Turbopack), not by `tsc -b`; `pnpm web:dev` builds `@job-agent/shared`
+  first. Its TypeScript resolves modules as a bundler (`@/` alias, no `.js` extension); `pnpm typecheck` runs
+  `next typegen` before `tsc --noEmit`, so the route types exist. It reads `.env` through `--env-file-if-exists` and
+  never exposes a variable to the browser (ADR-025)
 - **Build scripts:** pnpm runs install scripts only for the packages listed in `allowBuilds` (`pnpm-workspace.yaml`)
 - **Removed from scope:** RAG, embeddings, Qdrant, MySQL, `@nestjs/schedule`. RAG may return later for cover letters
   (pgvector + OpenAI `text-embedding-3-large`, `dimensions` 1536)
@@ -52,7 +59,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 
 | On the host (Mac; Linux for now) | In Docker (`docker compose up -d`) |
 |---|---|
-| NestJS, MCP servers, Playwright (`npx playwright install chromium`; on a Linux Playwright has no build for — the system Chrome through `RENDER_BROWSER_CHANNEL=chrome`), Ollama (Mac) | PostgreSQL + pgvector, Redis, Loki, Grafana |
+| NestJS, the Next.js web UI, MCP servers, Playwright (`npx playwright install chromium`; on a Linux Playwright has no build for — the system Chrome through `RENDER_BROWSER_CHANNEL=chrome`), Ollama (Mac) | PostgreSQL + pgvector, Redis, Loki, Grafana |
 
 Ollama runs on the host because Docker on macOS has no access to Metal; NestJS reaches it at `OLLAMA_URL`.
 Every container port is bound to `127.0.0.1` only; Loki and Grafana run without authentication for that reason.
@@ -67,6 +74,7 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | Key | Purpose |
 |---|---|
 | `NODE_ENV` | `development` \| `test` \| `production`; in production `/health` shows only `status` and `version` |
+| `APP_HOST` | address the API listens on; `127.0.0.1` — nothing outside the machine reaches it |
 | `APP_PORT` | HTTP port of the API |
 | `APP_VERSION` | version reported by `/health` and in the logs; `dev` when not set |
 | `TZ` | time zone of the app process and of every container (`Asia/Jerusalem` / `Europe/Kyiv`); Postgres also gets it as `timezone`, so dates in the database show in local time |
@@ -112,4 +120,7 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `JOB_MAIL_TRIAGE_BATCH_SIZE` | most e-mail headers in one LLM request |
 | `JOB_MAIL_TIMEOUT_MS` | connection, greeting and socket timeout of IMAP |
 | `JOB_MAIL_TEXT_RECHECK_DAYS`, `JOB_MAIL_TEXT_MAX_SEARCHES` | a LinkedIn / Glassdoor vacancy without a description is looked up on ATS boards again after this many days, at most this many times |
+| `WEB_HOST`, `WEB_PORT` | address and port of the web UI (`127.0.0.1`, `3001`) |
+| `WEB_API_URL` | the API as the web server sees it — `http://<APP_HOST>:<APP_PORT>`; never sent to the browser |
+| `WEB_API_TIMEOUT_MS` | limit of one request of the web server to the API |
 | `MCP_MAX_ROWS` | most rows a list tool of an MCP server returns, whatever the client asks (default 50) |

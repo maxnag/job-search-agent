@@ -24,7 +24,8 @@ export default defineConfig({
         '**/cli/**',
         '**/mcp/*.server.ts',
         '**/repositories/**',
-        '**/schema/**'
+        '**/schema/**',
+        'apps/web/**'
       ],
       thresholds: { statements: 95, branches: 92, functions: 95, lines: 95 }
     },

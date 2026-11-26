@@ -1,9 +1,11 @@
 import js from '@eslint/js';
+import nextPlugin from '@next/eslint-plugin-next';
 import vitest from '@vitest/eslint-plugin';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import { importX } from 'eslint-plugin-import-x';
 import jsdoc from 'eslint-plugin-jsdoc';
 import prettierRecommended from 'eslint-plugin-prettier/recommended';
+import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
@@ -31,7 +33,7 @@ const noNumberCast = {
 
 export default defineConfig(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/migrations/**']
+    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/migrations/**', '**/.next/**', '**/next-env.d.ts']
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -121,7 +123,27 @@ export default defineConfig(
     }
   },
   {
-    files: ['*.mjs', '*.mts', '**/scripts/*.mjs'],
+    files: ['apps/web/**/*.{ts,tsx}'],
+    extends: [nextPlugin.configs['core-web-vitals'], reactHooks.configs.flat['recommended-latest']],
+    languageOptions: {
+      globals: { ...globals.browser, React: 'readonly' }
+    },
+    settings: {
+      next: { rootDir: 'apps/web' }
+    },
+    rules: {
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          require: { ClassDeclaration: true, MethodDefinition: true, FunctionDeclaration: true, ArrowFunctionExpression: false },
+          checkConstructors: false,
+          publicOnly: false
+        }
+      ]
+    }
+  },
+  {
+    files: ['*.mjs', '*.mts', '**/scripts/*.mjs', 'apps/web/*.{ts,cjs}'],
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       'import-x/no-named-as-default': 'off'

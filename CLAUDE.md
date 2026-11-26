@@ -70,9 +70,9 @@ Job Search Agent collects vacancies from career pages and from job-alert e-mails
 
 **Target market:** Israel (priority — whole country, full-time / hybrid) and Ukraine (remote). Working language English; vacancies requiring Hebrew are filtered out.
 
-**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, IMAP (`imapflow`, read-only by code), Telegram bot (grammY), MCP servers over stdio, Drizzle ORM, Zod 4, Vitest, pino → Loki + Grafana. LLM: Ollama on the Mac or Claude Haiku 5.5 in the cloud — chosen by `LLM_PROVIDER`, never by code.
+**Tech Stack:** Node.js 24 LTS, NestJS 12, TypeScript, pnpm workspaces monorepo, BullMQ 6 + Redis 8.10, PostgreSQL 18 + pgvector (JSONB), Ollama (Qwen3 9B / 27B), Playwright + cheerio, IMAP (`imapflow`, read-only by code), Telegram bot (grammY), MCP servers over stdio, Drizzle ORM, Zod 4, Vitest, pino → Loki + Grafana; web UI — Next.js 16 (React 19) + Mantine + next-intl. LLM: Ollama on the Mac or Claude Haiku 5.5 in the cloud — chosen by `LLM_PROVIDER`, never by code.
 
-**Runs on:** the owner's Mac (Apple Silicon). NestJS, MCP servers, Playwright and Ollama run on the host; Postgres, Redis, Loki and Grafana run in Docker. Development currently happens on Linux with `LLM_PROVIDER=anthropic`.
+**Runs on:** the owner's Mac (Apple Silicon), on `127.0.0.1` only. NestJS, the web UI, MCP servers, Playwright and Ollama run on the host; Postgres, Redis, Loki and Grafana run in Docker. Development currently happens on Linux with `LLM_PROVIDER=anthropic`.
 
 **Phases, progress and open questions** live in the master plan in `.claude/plans/` — never in this file or in `docs/`.
 
@@ -93,10 +93,12 @@ pnpm job-mail:read [--hours n] [--dry-run]  # read the job-alert e-mails now; --
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
 pnpm api:start                         # build, then the API without watch (the owner's Mac)
+pnpm web:dev                           # the web UI with hot reload at http://127.0.0.1:3001 (needs the running API)
+pnpm web:build && pnpm web:start       # production build of the web UI, then serve it
 pnpm mcp:jobs-db                       # build, then the jobs-db MCP server on stdio — Claude Code starts it from .mcp.json
 pnpm build                             # tsc -b over the project references — every package and app
 pnpm api:build                         # the API and the packages it uses, with its prompts
-pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
+pnpm typecheck                         # tsc -b, next typegen, then tsc --noEmit per package (specs included)
 pnpm lint:fix && pnpm prettier:fix
 pnpm test                              # Vitest unit tests; env from .env.example, never from .env
 pnpm test:e2e                          # repositories against job_agent_test (db:migrate:test first)
@@ -131,6 +133,7 @@ job alerts   ─► email queue  ─► (LLM tells the kind by headers) ─► L
 - **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped) within one country
 - **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
 - **MCP servers** (ADR-023) are entry points of the API over a Nest context without queues; `jobs-db` answers the owner's questions in Claude Code / Claude Desktop — six read tools and `record_action`, the same choice a card button stores. Logs go to stderr — stdout is the protocol. `browser`, `gmail`, `notify` come with the agents that need them
+- **Web UI** (ADR-025): Next.js is the only door to the API — server components read it through one server-only client, the browser never knows its address; language in the address (`/en`, `/uk`), filters in the query string, Mantine
 - **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source, a company board from discovery (*Add as a source / Ignore*); buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
@@ -139,7 +142,7 @@ Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisi
 
 ```
 apps/api/            NestJS 12: workers, agents, Telegram, /health, Bull Board; MCP entry points in src/mcp
-apps/web/            Nuxt UI — optional, later (not created yet)
+apps/web/            Next.js web UI: server components call the API, the browser talks only to Next
 packages/shared/     shared enums and registries: queue, job and scheduler names, log constants
 packages/db/         Drizzle schema, SQL migrations, seeds, client
 packages/mcp/        MCP wiring: the stdio server factory, server names, tool answer helpers
@@ -171,6 +174,6 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 
 ## Related Documentation
 
-- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database, one-entity-per-file, mcp. Rules for agents, queues and browser are added when that code appears
+- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database, one-entity-per-file, mcp, web. Rules for agents, queues and browser are added when that code appears
 - [project-brief.md](docs/project-brief.md) · [tech-context.md](docs/tech-context.md) · [decisions.md](docs/decisions.md)
 - [MEMORY.md](docs/memory/MEMORY.md) — project memory

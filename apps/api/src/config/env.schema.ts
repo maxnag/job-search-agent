@@ -49,6 +49,7 @@ function positiveInt() {
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    APP_HOST: z.string().min(1).default('127.0.0.1'),
     APP_PORT: positiveInt().default(3000),
     APP_VERSION: z.preprocess(emptyToUndefined, z.string().default('dev')),
 

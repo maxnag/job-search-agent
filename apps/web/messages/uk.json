@@ -1,0 +1,53 @@
+{
+  "app": {
+    "title": "Job Search Agent"
+  },
+  "nav": {
+    "vacancies": "Вакансії",
+    "companies": "Компанії",
+    "sources": "Джерела",
+    "menu": "Показати або сховати меню"
+  },
+  "pages": {
+    "vacancies": {
+      "title": "Вакансії",
+      "empty": "Список вакансій із фільтрами з'явиться у фазі 1."
+    },
+    "companies": {
+      "title": "Компанії",
+      "empty": "Компанії з'являться у фазі 2."
+    },
+    "sources": {
+      "title": "Джерела",
+      "empty": "Джерела з'являться у фазі 2."
+    }
+  },
+  "locale": {
+    "label": "Мова",
+    "en": "English",
+    "uk": "Українська"
+  },
+  "colorScheme": {
+    "label": "Тема",
+    "light": "Світла",
+    "dark": "Темна",
+    "auto": "Системна"
+  },
+  "apiStatus": {
+    "ok": "API: працює",
+    "degraded": "API: працює, але база, Redis або LLM — ні",
+    "down": "API: недоступний",
+    "checking": "API: перевірка…"
+  },
+  "errors": {
+    "title": "Щось пішло не так",
+    "description": "Сторінку не вдалося показати. Можливо, API зупинено.",
+    "retry": "Спробувати ще раз",
+    "notFoundTitle": "Сторінку не знайдено",
+    "notFoundDescription": "Такої сторінки немає.",
+    "home": "До вакансій"
+  },
+  "common": {
+    "loading": "Завантаження…"
+  }
+}

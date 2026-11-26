@@ -13,13 +13,15 @@ const app = await NestFactory.create(AppModule, { bufferLogs: true });
 app.useLogger(app.get(PinoLogger));
 
 const configService = app.get<ConfigService<IEnv, true>>(ConfigService);
+const host = configService.get('APP_HOST', { infer: true });
 const port = configService.get('APP_PORT', { infer: true });
 
 app.enableShutdownHooks();
-await app.listen(port);
+await app.listen(port, host);
 
 logger.log({
   message: 'API started',
+  host,
   port,
   version: configService.get('APP_VERSION', { infer: true }),
   llmProvider: configService.get('LLM_PROVIDER', { infer: true }),
