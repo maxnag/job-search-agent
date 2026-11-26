@@ -36,7 +36,8 @@ const OUTPUT = {
   vacancyId: z.number().int(),
   title: z.string(),
   company: z.string(),
-  kind: z.enum(VacancyActionKindEnum)
+  kind: z.enum(VacancyActionKindEnum),
+  recorded: z.boolean().describe('false when the latest choice about the vacancy was already this one — nothing new is stored')
 };
 
 /**
@@ -68,11 +69,11 @@ export class RecordActionTool implements IJobsDBTool {
         title: 'Record a choice about a vacancy',
         description:
           "Store the owner's choice about a vacancy — applied, interested or skipped — exactly as the buttons under its " +
-          'Telegram card do. Call it only when the owner says so in this conversation; never infer a choice. Each call ' +
-          'adds a record; it changes nothing else.',
+          'Telegram card do. Call it only when the owner says so in this conversation; never infer a choice. A repeat of ' +
+          'the latest choice about the vacancy is not stored again (recorded: false); it changes nothing else.',
         inputSchema: INPUT,
         outputSchema: OUTPUT,
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
       },
       async ({ vacancyId, kind }) => run(NAME, async () => this.record(vacancyId, kind))
     );
@@ -95,11 +96,11 @@ export class RecordActionTool implements IJobsDBTool {
       throw new JobsDBToolError(JobsDBErrorCodeEnum.VACANCY_NOT_FOUND, `There is no vacancy ${vacancyId}`);
     }
 
-    await this.vacancyActionService.record(vacancyId, kind);
+    const recorded = await this.vacancyActionService.record(vacancyId, kind);
 
     return {
-      data: { vacancyId, title: vacancy.title, company: vacancy.company, kind },
-      summary: `Vacancy ${vacancyId} (${vacancy.title} at ${vacancy.company}) marked ${kind}`
+      data: { vacancyId, title: vacancy.title, company: vacancy.company, kind, recorded },
+      summary: `Vacancy ${vacancyId} (${vacancy.title} at ${vacancy.company}) ${recorded ? 'marked' : 'was already marked'} ${kind}`
     };
   }
 }

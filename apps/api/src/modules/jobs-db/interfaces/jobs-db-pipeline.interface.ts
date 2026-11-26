@@ -72,7 +72,7 @@ export interface IJobsDBSourceCount {
 }
 
 /**
- * How many choices of a kind the owner made
+ * How many vacancies have a choice of a kind as their latest choice of the owner
  */
 export interface IJobsDBActionCount {
   /**
@@ -83,7 +83,7 @@ export interface IJobsDBActionCount {
   readonly kind: VacancyActionKindEnum;
 
   /**
-   * Choices
+   * Vacancies
    *
    * @var {number}
    */
@@ -116,7 +116,7 @@ export interface IJobsDBPipelineCounts {
   readonly bySource: readonly IJobsDBSourceCount[];
 
   /**
-   * Choices of the owner made in the period
+   * Vacancies by the latest choice of the owner made in the period
    *
    * @var {readonly IJobsDBActionCount[]}
    */

@@ -22,16 +22,26 @@ export class VacancyActionService {
   constructor(private readonly notificationRepository: NotificationRepository) {}
 
   /**
-   * Store a choice: a press under a card carries its Telegram message, a choice made through the MCP server has none
+   * Store a choice: a press under a card carries its Telegram message, a choice made through the MCP server has none.
+   * A repeat of the latest choice about the vacancy, from any channel, is not stored again
    *
    * @param {number} vacancyId
    * @param {VacancyActionKindEnum} kind
    * @param {number} [messageId]
    *
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} false when the latest choice was already this one
    */
-  async record(vacancyId: number, kind: VacancyActionKindEnum, messageId?: number): Promise<void> {
-    await this.notificationRepository.createAction(vacancyId, kind, messageId);
+  async record(vacancyId: number, kind: VacancyActionKindEnum, messageId?: number): Promise<boolean> {
+    const recorded = await this.notificationRepository.createAction(vacancyId, kind, messageId);
+
+    if (!recorded) {
+      this.logger.debug({ message: 'Vacancy action repeated', vacancyId, kind });
+
+      return false;
+    }
+
     this.logger.log({ message: 'Vacancy action', vacancyId, kind });
+
+    return true;
   }
 }

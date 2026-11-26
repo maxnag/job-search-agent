@@ -126,8 +126,8 @@ export class JobsDBRepository {
   }
 
   /**
-   * The counters of the pipeline: vacancies first seen in the period by stage, verdict and source; choices made and
-   * cards sent in the period. Without a period — over everything
+   * The counters of the pipeline: vacancies first seen in the period by stage, verdict and source; vacancies by the
+   * latest choice made in the period; cards sent in the period. Without a period — over everything
    *
    * @param {number} [sinceDays]
    *
@@ -136,6 +136,12 @@ export class JobsDBRepository {
   async countPipeline(sinceDays?: number): Promise<IJobsDBPipelineCounts> {
     const { db } = this.databaseService;
     const seen = this.since(vacancies.vacancy_first_seen_at, sinceDays);
+    const latestActions = db
+      .selectDistinctOn([vacancyActions.vacancy_id], { kind: vacancyActions.vacancy_action_kind })
+      .from(vacancyActions)
+      .where(this.since(vacancyActions.dt_create, sinceDays))
+      .orderBy(asc(vacancyActions.vacancy_id), desc(vacancyActions.vacancy_action_id))
+      .as('latest_actions');
     const [byStage, byVerdict, bySource, actions, [cards]] = await Promise.all([
       db
         .select({ stage: vacancies.vacancy_stage, count: count() })
@@ -160,11 +166,10 @@ export class JobsDBRepository {
         .groupBy(sources.source_id)
         .orderBy(desc(count()), asc(sources.source_id)),
       db
-        .select({ kind: vacancyActions.vacancy_action_kind, count: count() })
-        .from(vacancyActions)
-        .where(this.since(vacancyActions.dt_create, sinceDays))
-        .groupBy(vacancyActions.vacancy_action_kind)
-        .orderBy(asc(vacancyActions.vacancy_action_kind)),
+        .select({ kind: latestActions.kind, count: count() })
+        .from(latestActions)
+        .groupBy(latestActions.kind)
+        .orderBy(asc(latestActions.kind)),
       db
         .select({ count: count() })
         .from(vacancyMatches)
