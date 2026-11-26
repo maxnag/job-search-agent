@@ -27,6 +27,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Web languages | `next-intl` (language in the address) | 4.15.3 | host |
 | Logs | `nestjs-pino`, `pino`, `pino-opentelemetry-transport` | 5.3.1, 10.4.0, 4.0.2 | host |
 | Tests | Vitest + `unplugin-swc` (`@swc/core`) | 5.1.0, 2.0.0 (1.16.22) | host |
+| Web tests | Testing Library (`react`, `dom`, `user-event`) + `jsdom`, the Vitest project `web` | 16.3.3, 10.4.2, 14.6.13 + 31.0.1 | host |
 | Lint / format | ESLint, `typescript-eslint`, Prettier | 10.15.0, 8.72.2, 3.10.1 | host |
 | Database | PostgreSQL + pgvector | `pgvector/pgvector:0.8.7-pg18` | Docker |
 | Redis | official image, AOF on | `redis:8.10.3` | Docker |

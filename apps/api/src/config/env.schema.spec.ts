@@ -25,6 +25,7 @@ describe('envSchema', () => {
 
     expect(env).toMatchObject({
       NODE_ENV: 'development',
+      APP_HOST: '127.0.0.1',
       APP_PORT: 3000,
       APP_VERSION: 'dev',
       LLM_TIMEOUT_MS: 60000,
@@ -38,6 +39,15 @@ describe('envSchema', () => {
 
   it('treats an empty value as a missing one', () => {
     expect(envSchema.parse({ ...BASE, APP_VERSION: '' }).APP_VERSION).toBe('dev');
+  });
+
+  it('listens only on this machine unless told otherwise', () => {
+    expect(envSchema.parse(BASE).APP_HOST).toBe('127.0.0.1');
+    expect(envSchema.parse({ ...BASE, APP_HOST: '0.0.0.0' }).APP_HOST).toBe('0.0.0.0');
+  });
+
+  it('refuses an empty address instead of guessing one', () => {
+    expect(issues({ ...BASE, APP_HOST: '' })).toEqual(['APP_HOST']);
   });
 
   it.each([

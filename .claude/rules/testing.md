@@ -123,6 +123,22 @@ pnpm test:coverage                                          # with coverage → 
 pnpm test apps/api/src/modules/resume/helpers/experience.helper.spec.ts   # one file
 ```
 
+## Web specs (`apps/web`)
+
+- [ ] They run in the Vitest project `web` (`jsdom`, the JSX transform of Vitest — the SWC of the `api` project parses
+      no JSX); `pnpm test` runs both projects, `npx vitest run --project web` only the web
+- [ ] A component is rendered with `renderWithProviders(ui, locale)` (`apps/web/test/render.tsx`) — the Mantine theme
+      and the real dictionary; texts are found by what the user reads, never by a class name
+- [ ] Queries of Testing Library are the assertion — no `jest-dom`; an element hidden by a breakpoint (`hiddenFrom`)
+      is found by its label, jsdom applies the media query of a 1024px window
+- [ ] `test/setup.ts` replaces `server-only` and the hooks of `next/navigation` for every spec — a spec sets the address
+      with `vi.mocked(usePathname)` / `vi.mocked(useSearchParams)`; the rest of `next/navigation` (`notFound` included)
+      stays real, so "not found" is checked by the thrown `NEXT_HTTP_ERROR_FALLBACK;404`
+- [ ] A server component or `generateMetadata` gets `vi.mock('next-intl/server', () => import('…/test/next-intl-server.mock'))`
+      — `getTranslations` with the real English dictionary; an async server component is awaited and its element rendered
+- [ ] The API is never called: `fetch` is stubbed with `vi.stubGlobal`, or `@/server/a-p-i-client` is mocked
+- [ ] `window.location` cannot be spied on in jsdom — a full page load is checked through what builds its address
+
 ## Tests that pin a rule
 
 - [ ] The case is written from the rule's text and its expected values are decided **before** running

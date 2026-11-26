@@ -162,7 +162,7 @@ export default defineConfig(
     }
   },
   {
-    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    files: ['**/*.spec.{ts,tsx}', '**/*.e2e-spec.ts', 'apps/web/test/**/*.{ts,tsx}'],
     plugins: { vitest },
     rules: {
       ...vitest.configs.recommended.rules,
