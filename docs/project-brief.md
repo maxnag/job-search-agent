@@ -24,9 +24,10 @@ Telegram cards. **The decision "fits / does not fit" belongs to the human, not t
 Hybrid: agents where the path differs every time (site navigation, reading an e-mail), ordinary code
 everywhere else. The LLM does not evaluate vacancies — it only understands text and extracts data.
 
-Both channels converge into one extraction and one set of filters. Agent tools are MCP servers —
-`browser`, `gmail`, `jobs-db`, `notify` — and the same servers plug into Claude Desktop to ask about the
-owner's applications in plain words.
+Both channels converge into one extraction and one set of filters. Agent tools are MCP servers, and the same
+servers plug into Claude Code and Claude Desktop to ask about the owner's applications in plain words. The first one,
+`jobs-db`, reads the vacancies, verdicts, choices and sources and records a choice like a card button (ADR-023);
+`browser`, `gmail` and `notify` come with the agents that need them.
 
 **LinkedIn and Glassdoor are not scraped:** it violates their terms and risks the account. Their vacancies
 arrive only through Job Alert e-mails; their links are never opened — the description comes from the company's own

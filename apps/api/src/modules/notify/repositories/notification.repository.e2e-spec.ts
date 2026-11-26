@@ -156,6 +156,18 @@ describe('NotificationRepository (e2e)', () => {
     ]);
   });
 
+  it('stores a choice made outside Telegram without a message', async () => {
+    const vacancy = await insertVacancy(database, sourceId);
+
+    await repository.createAction(vacancy.vacancy_id, VacancyActionKindEnum.APPLIED);
+
+    const rows = await database.db.select().from(vacancyActions);
+
+    expect(rows.map(row => [row.vacancy_id, row.vacancy_action_kind, row.vacancy_action_message_id])).toEqual([
+      [vacancy.vacancy_id, VacancyActionKindEnum.APPLIED, null]
+    ]);
+  });
+
   it('refuses a press on a vacancy that does not exist', async () => {
     await expect(repository.createAction(999, VacancyActionKindEnum.SKIPPED, 555)).rejects.toThrow();
   });

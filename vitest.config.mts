@@ -22,9 +22,11 @@ export default defineConfig({
         '**/index.ts',
         '**/main.ts',
         '**/cli/**',
+        '**/mcp/*.server.ts',
+        '**/repositories/**',
         '**/schema/**'
       ],
-      thresholds: { statements: 89, branches: 87, functions: 83, lines: 90 }
+      thresholds: { statements: 95, branches: 92, functions: 95, lines: 95 }
     },
     env: {
       NODE_ENV: 'test',

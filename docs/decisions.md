@@ -481,3 +481,42 @@ letter is private. The owner reads mail in Gmail today, but may move to another 
 - (+) A LinkedIn vacancy becomes a full card only from the company's own posting — nothing is scraped
 - (−) A vacancy of a company without a public ATS board, seen only on LinkedIn, never gets a card
 - (−) An app password grants the whole mailbox to whoever holds it; it lives only in `.env` on the owner's machine
+
+## ADR-023: MCP servers are entry points of the API; reads plus one write
+
+**Status:** Accepted
+
+**Context:** the owner wants to ask about their own search in plain words — "where did I apply this week", "why is this
+vacancy no_fit" — from Claude Code or Claude Desktop, and the future agents need tools. The answers already live in
+the database behind the API's repositories; the report command (`vacancies:report`) has the same filter. A package
+cannot import the application, so servers inside `packages/mcp` would duplicate every query.
+
+**Decision:**
+- **An MCP server is an entry point of `apps/api`** (`apps/api/src/mcp/<name>.server.ts`): a Nest application context
+  of `MCPModule` — config, logger, database and the tools module — without HTTP, queues or Redis. `packages/mcp` keeps
+  only the wiring: `startStdioServer` (stdio transport, close on the end of stdin or a stop signal) and the answer
+  helpers `toolResult` / `toolError`
+- **A server ships with the agent that needs it:** `jobs-db` now; `browser` with the browser agent, `gmail` and
+  `notify` with the reading of recruiters' replies. No empty server is kept
+- **`jobs-db` reads, and writes one thing:** six read tools (`find_vacancies`, `get_vacancy`, `list_applications`,
+  `pipeline_summary`, `list_sources`, `list_source_candidates`) and `record_action` — the owner's choice
+  (`applied` / `interested` / `skipped`) stored exactly as a card button stores it, without a Telegram message
+  (`vacancy_action_message_id` is nullable). Nothing else can be changed or deleted through MCP
+- **A tool is one class** with its private input and output Zod schemas; the SDK validates the input and checks the
+  output. The answer is `structuredContent` plus a one-line summary and the same JSON as text. A list is capped at
+  `MCP_MAX_ROWS` whatever the client asks, with the total
+- **Errors carry a code, never a cause:** a refusal the client can act on (`VACANCY_NOT_FOUND`) is answered with its
+  code; any other failure is logged to stderr with its cause and answered `TOOL_FAILED`. The SDK would put an
+  exception's text into the answer, so every call goes through one runner that catches it
+- **stdout belongs to the protocol:** the logger of a server writes to stderr (and Loki), Nest starts with only
+  `error` / `fatal`, a build before the start writes to stderr too
+- **Web text stays data** (ADR-020): every tool that returns titles, companies or extracted fields says so in its
+  description; the client model must not follow instructions found in them. Nothing from the mailbox but what is
+  already a vacancy, and no secret or `llm_settings` row, is ever returned
+- **The same database role** as the API; the write is limited by code
+
+**Consequences:**
+- (+) One filter for the command and the tool; the queries are the API's own, covered by its e2e tests
+- (+) The owner's questions need no SQL and no new UI; a choice made in a conversation counts like a button
+- (−) A server starts a Nest context (about a second) and needs the built API (`pnpm api:build`)
+- (−) The client sees everything the tools return — the vacancies, verdicts and profile names go to the cloud model
