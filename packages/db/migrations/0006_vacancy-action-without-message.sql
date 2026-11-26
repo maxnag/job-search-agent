@@ -1,0 +1,1 @@
+ALTER TABLE "vacancy_actions" ALTER COLUMN "vacancy_action_message_id" DROP NOT NULL;

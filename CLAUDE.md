@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `4540a81` (job-alert e-mails over IMAP)
-> Run `git log 4540a81..HEAD --stat` to see what changed since this doc was last updated.
+> **Last synced commit:** `89ee529` (jobs-db MCP server)
+> Run `git log 89ee529..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
 
@@ -93,6 +93,7 @@ pnpm job-mail:read [--hours n] [--dry-run]  # read the job-alert e-mails now; --
 pnpm db:generate --name <what-it-does> # SQL migration from the schema; add --custom for a hand-written one
 pnpm api:dev                           # tsc -b --watch + API with node --watch + prompt copy (Bull Board at BULL_BOARD_PATH)
 pnpm api:start                         # build, then the API without watch (the owner's Mac)
+pnpm mcp:jobs-db                       # build, then the jobs-db MCP server on stdio — Claude Code starts it from .mcp.json
 pnpm build                             # tsc -b over the project references — every package and app
 pnpm api:build                         # the API and the packages it uses, with its prompts
 pnpm typecheck                         # tsc -b, then tsc --noEmit per package (specs included)
@@ -129,7 +130,7 @@ job alerts   ─► email queue  ─► (LLM tells the kind by headers) ─► L
 - **Matching is code:** one rule per file (`modules/matching/helpers/rules`) against the current resume and `profile_preferences` — languages, place, level, Hebrew, years, excluded companies; verdict `fit` / `almost` / `no_fit` with reasons
 - **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped) within one country
 - **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
-- **MCP servers** `browser`, `gmail`, `jobs-db`, `notify` are the agents' tools, and the same servers plug into Claude Desktop so the owner can ask about their applications in plain words
+- **MCP servers** (ADR-023) are entry points of the API over a Nest context without queues; `jobs-db` answers the owner's questions in Claude Code / Claude Desktop — six read tools and `record_action`, the same choice a card button stores. Logs go to stderr — stdout is the protocol. `browser`, `gmail`, `notify` come with the agents that need them
 - **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source, a company board from discovery (*Add as a source / Ignore*); buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
@@ -137,11 +138,11 @@ Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisi
 ## Layout
 
 ```
-apps/api/            NestJS 12: workers, agents, Telegram, /health, Bull Board
+apps/api/            NestJS 12: workers, agents, Telegram, /health, Bull Board; MCP entry points in src/mcp
 apps/web/            Nuxt UI — optional, later (not created yet)
 packages/shared/     shared enums and registries: queue, job and scheduler names, log constants
 packages/db/         Drizzle schema, SQL migrations, seeds, client
-packages/mcp/        MCP servers over stdio: jobs-db, browser, gmail, notify
+packages/mcp/        MCP wiring: the stdio server factory, server names, tool answer helpers
 docker/              Postgres init, Loki config, Grafana provisioning and dashboard
 docker-compose.yml   postgres, redis, loki, grafana
 Dockerfile           image of apps/api (release artifact)
@@ -171,6 +172,6 @@ pnpm-workspace.yaml  workspaces + minimumReleaseAge
 
 ## Related Documentation
 
-- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database, one-entity-per-file. Rules for agents, queues, browser and MCP are added when that code appears
+- [`.claude/rules/`](.claude/rules/) — **mandatory** standards. Always loaded: workflow, project-knowledge, code-style, dependencies, observability. Loaded when matching files are read: nestjs-patterns, testing, llm, database, one-entity-per-file, mcp. Rules for agents, queues and browser are added when that code appears
 - [project-brief.md](docs/project-brief.md) · [tech-context.md](docs/tech-context.md) · [decisions.md](docs/decisions.md)
 - [MEMORY.md](docs/memory/MEMORY.md) — project memory

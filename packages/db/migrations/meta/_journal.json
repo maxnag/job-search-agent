@@ -43,6 +43,13 @@
       "when": 1795540158134,
       "tag": "0005_job-mail",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795554094655,
+      "tag": "0006_vacancy-action-without-message",
+      "breakpoints": true
     }
   ]
 }

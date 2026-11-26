@@ -82,7 +82,7 @@ vi.spyOn(configService, 'get').mockImplementation((key: string) => {
 | Service, orchestrator | `should be defined` + each public method: happy path + error or boundary + transaction |
 | Controller | `should be defined` + each handler: success + error |
 | Helper (pure functions) | each exported function: the cases a rule applies to, the cases it leaves alone, its boundaries |
-| Repository | e2e against `job_agent_test` |
+| Repository | e2e against `job_agent_test` — left out of the unit coverage (`**/repositories/**`), never unit-tested |
 | Consumer (BullMQ) | `should be defined` + `process()` success and failure + `onFailed()` + `onCompleted()` |
 | Guard / filter / interceptor | `should be defined` + allows + blocks |
 

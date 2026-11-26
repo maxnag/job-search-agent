@@ -89,6 +89,13 @@ export interface IReportVacancy {
   readonly title: string;
 
   /**
+   * Company
+   *
+   * @var {string}
+   */
+  readonly company: string;
+
+  /**
    * City
    *
    * @var {string | null}
@@ -122,6 +129,27 @@ export interface IReportVacancy {
    * @var {string | null}
    */
   readonly skipReason: string | null;
+
+  /**
+   * Page of the position
+   *
+   * @var {string}
+   */
+  readonly url: string;
+
+  /**
+   * The same position on the board of the company, when its own page is never opened
+   *
+   * @var {string | null}
+   */
+  readonly textURL: string | null;
+
+  /**
+   * First seen
+   *
+   * @var {Date}
+   */
+  readonly firstSeenAt: Date;
 }
 
 /**

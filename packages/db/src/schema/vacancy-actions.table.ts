@@ -6,7 +6,8 @@ import { timestampColumns } from '../columns/timestamp.columns.js';
 import { vacancies } from './vacancies.table.js';
 
 /**
- * Buttons the owner pressed under the vacancy cards in Telegram — the history of choices, used to tune the filters
+ * Choices the owner made about a vacancy — a button under its card in Telegram, or a call of the `record_action` tool of
+ * the MCP server, which has no message (`vacancy_action_message_id` is null). The history of choices tunes the filters
  */
 export const vacancyActions = pgTable(
   'vacancy_actions',
@@ -16,7 +17,7 @@ export const vacancyActions = pgTable(
       .notNull()
       .references(() => vacancies.vacancy_id, { onDelete: 'cascade' }),
     vacancy_action_kind: text('vacancy_action_kind').$type<VacancyActionKindEnum>().notNull(),
-    vacancy_action_message_id: integer('vacancy_action_message_id').notNull(),
+    vacancy_action_message_id: integer('vacancy_action_message_id'),
     ...timestampColumns()
   },
   table => [index('vacancy_actions_vacancy_id_idx').on(table.vacancy_id)]

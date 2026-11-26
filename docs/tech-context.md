@@ -40,6 +40,10 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
   `maxRetriesPerRequest: null`. BullMQ 6 has a Postgres backend, but it is new — Redis stays
 - **Build:** `tsc -b` over project references (`tsconfig.build.json` per package); no Nest CLI. Vitest uses SWC only
   because esbuild emits no decorator metadata, which Nest DI needs
+- **MCP servers:** entry points of the built API (`apps/api/dist/mcp/<name>.server.js`), started by the client over
+  stdio — Claude Code from `.mcp.json`, Claude Desktop from `claude_desktop_config.json`
+  (`docs/claude-desktop-config.example.json`); they read `.env` through `--env-file` and log to stderr only (ADR-023).
+  Try one by hand: `npx @modelcontextprotocol/inspector node --env-file=.env apps/api/dist/mcp/jobs-db.server.js`
 - **Build scripts:** pnpm runs install scripts only for the packages listed in `allowBuilds` (`pnpm-workspace.yaml`)
 - **Removed from scope:** RAG, embeddings, Qdrant, MySQL, `@nestjs/schedule`. RAG may return later for cover letters
   (pgvector + OpenAI `text-embedding-3-large`, `dimensions` 1536)
@@ -109,3 +113,4 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `JOB_MAIL_TRIAGE_BATCH_SIZE` | most e-mail headers in one LLM request |
 | `JOB_MAIL_TIMEOUT_MS` | connection, greeting and socket timeout of IMAP |
 | `JOB_MAIL_TEXT_RECHECK_DAYS`, `JOB_MAIL_TEXT_MAX_SEARCHES` | a LinkedIn / Glassdoor vacancy without a description is looked up on ATS boards again after this many days, at most this many times |
+| `MCP_MAX_ROWS` | most rows a list tool of an MCP server returns, whatever the client asks (default 50) |

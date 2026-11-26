@@ -1,0 +1,1344 @@
+{
+  "id": "9396df05-d552-4fd4-92e8-2db859d625cf",
+  "prevId": "d104e047-e744-4b04-9d55-bc4c85474e6b",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.job_mail_messages": {
+      "name": "job_mail_messages",
+      "schema": "",
+      "columns": {
+        "job_mail_message_id": {
+          "name": "job_mail_message_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "job_mail_messages_job_mail_message_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "job_mail_message_key": {
+          "name": "job_mail_message_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_provider": {
+          "name": "job_mail_message_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_provider_id": {
+          "name": "job_mail_message_provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_sender_domain": {
+          "name": "job_mail_message_sender_domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_received_at": {
+          "name": "job_mail_message_received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_kind": {
+          "name": "job_mail_message_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_status": {
+          "name": "job_mail_message_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_mail_message_links": {
+          "name": "job_mail_message_links",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "job_mail_message_positions": {
+          "name": "job_mail_message_positions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "job_mail_message_created": {
+          "name": "job_mail_message_created",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "job_mail_message_error": {
+          "name": "job_mail_message_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "job_mail_messages_received_at_idx": {
+          "name": "job_mail_messages_received_at_idx",
+          "columns": [
+            {
+              "expression": "job_mail_message_received_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_mail_messages_source_id_sources_source_id_fk": {
+          "name": "job_mail_messages_source_id_sources_source_id_fk",
+          "tableFrom": "job_mail_messages",
+          "tableTo": "sources",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "source_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "job_mail_messages_key_uq": {
+          "name": "job_mail_messages_key_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job_mail_message_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.llm_settings": {
+      "name": "llm_settings",
+      "schema": "",
+      "columns": {
+        "llm_setting_id": {
+          "name": "llm_setting_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "llm_settings_llm_setting_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "llm_setting_provider": {
+          "name": "llm_setting_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "llm_setting_step": {
+          "name": "llm_setting_step",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "llm_setting_model": {
+          "name": "llm_setting_model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "llm_setting_params": {
+          "name": "llm_setting_params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "llm_settings_provider_step_uq": {
+          "name": "llm_settings_provider_step_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "llm_setting_provider",
+            "llm_setting_step"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "profile_id": {
+          "name": "profile_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "profiles_profile_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "profile_name": {
+          "name": "profile_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profile_core_skill_kinds": {
+          "name": "profile_core_skill_kinds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY['programming_language']::text[]"
+        },
+        "profile_preferences": {
+          "name": "profile_preferences",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "profiles_profile_name_uq": {
+          "name": "profiles_profile_name_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "profile_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resume_languages": {
+      "name": "resume_languages",
+      "schema": "",
+      "columns": {
+        "resume_language_id": {
+          "name": "resume_language_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "resume_languages_resume_language_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "resume_id": {
+          "name": "resume_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_language_code": {
+          "name": "resume_language_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_language_level": {
+          "name": "resume_language_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resume_languages_resume_id_resumes_resume_id_fk": {
+          "name": "resume_languages_resume_id_resumes_resume_id_fk",
+          "tableFrom": "resume_languages",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resume_id"
+          ],
+          "columnsTo": [
+            "resume_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resume_languages_resume_code_uq": {
+          "name": "resume_languages_resume_code_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "resume_id",
+            "resume_language_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resume_skills": {
+      "name": "resume_skills",
+      "schema": "",
+      "columns": {
+        "resume_skill_id": {
+          "name": "resume_skill_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "resume_skills_resume_skill_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "resume_id": {
+          "name": "resume_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_skill_key": {
+          "name": "resume_skill_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_skill_name": {
+          "name": "resume_skill_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_skill_kind": {
+          "name": "resume_skill_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_skill_years": {
+          "name": "resume_skill_years",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resume_skill_is_unknown": {
+          "name": "resume_skill_is_unknown",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "resume_skill_is_claimed": {
+          "name": "resume_skill_is_claimed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "resume_skill_is_hidden": {
+          "name": "resume_skill_is_hidden",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resume_skills_resume_id_resumes_resume_id_fk": {
+          "name": "resume_skills_resume_id_resumes_resume_id_fk",
+          "tableFrom": "resume_skills",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resume_id"
+          ],
+          "columnsTo": [
+            "resume_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resume_skills_resume_key_uq": {
+          "name": "resume_skills_resume_key_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "resume_id",
+            "resume_skill_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.resumes": {
+      "name": "resumes",
+      "schema": "",
+      "columns": {
+        "resume_id": {
+          "name": "resume_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "resumes_resume_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_file_name": {
+          "name": "resume_file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_file_hash": {
+          "name": "resume_file_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_file_path": {
+          "name": "resume_file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resume_text": {
+          "name": "resume_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_data": {
+          "name": "resume_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_experience_years": {
+          "name": "resume_experience_years",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resume_llm_model": {
+          "name": "resume_llm_model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_is_current": {
+          "name": "resume_is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "resumes_profile_current_uq": {
+          "name": "resumes_profile_current_uq",
+          "columns": [
+            {
+              "expression": "profile_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"resumes\".\"resume_is_current\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "resumes_profile_id_profiles_profile_id_fk": {
+          "name": "resumes_profile_id_profiles_profile_id_fk",
+          "tableFrom": "resumes",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "profile_id"
+          ],
+          "columnsTo": [
+            "profile_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resumes_profile_file_hash_uq": {
+          "name": "resumes_profile_file_hash_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "profile_id",
+            "resume_file_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.source_candidates": {
+      "name": "source_candidates",
+      "schema": "",
+      "columns": {
+        "source_candidate_id": {
+          "name": "source_candidate_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "source_candidates_source_candidate_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source_candidate_ats_kind": {
+          "name": "source_candidate_ats_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_candidate_board": {
+          "name": "source_candidate_board",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_candidate_company": {
+          "name": "source_candidate_company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_candidate_status": {
+          "name": "source_candidate_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_candidate_positions": {
+          "name": "source_candidate_positions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "source_candidate_matching": {
+          "name": "source_candidate_matching",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "source_candidate_unknown": {
+          "name": "source_candidate_unknown",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "source_candidate_examples": {
+          "name": "source_candidate_examples",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "source_candidate_checked_at": {
+          "name": "source_candidate_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "source_candidate_notified_at": {
+          "name": "source_candidate_notified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "source_candidates_source_id_sources_source_id_fk": {
+          "name": "source_candidates_source_id_sources_source_id_fk",
+          "tableFrom": "source_candidates",
+          "tableTo": "sources",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "source_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "source_candidates_ats_kind_board_uq": {
+          "name": "source_candidates_ats_kind_board_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_candidate_ats_kind",
+            "source_candidate_board"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sources": {
+      "name": "sources",
+      "schema": "",
+      "columns": {
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "sources_source_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_fetch_mode": {
+          "name": "source_fetch_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'html'"
+        },
+        "source_is_active": {
+          "name": "source_is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "source_status": {
+          "name": "source_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ok'"
+        },
+        "source_last_scan_at": {
+          "name": "source_last_scan_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_last_error": {
+          "name": "source_last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sources_source_url_uq": {
+          "name": "sources_source_url_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_url"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vacancies": {
+      "name": "vacancies",
+      "schema": "",
+      "columns": {
+        "vacancy_id": {
+          "name": "vacancy_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "vacancies_vacancy_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_url": {
+          "name": "vacancy_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_external_id": {
+          "name": "vacancy_external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_title": {
+          "name": "vacancy_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_company": {
+          "name": "vacancy_company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_dedup_key": {
+          "name": "vacancy_dedup_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_dedup_country": {
+          "name": "vacancy_dedup_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "vacancy_country": {
+          "name": "vacancy_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_city": {
+          "name": "vacancy_city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_work_mode": {
+          "name": "vacancy_work_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_role_family": {
+          "name": "vacancy_role_family",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_level": {
+          "name": "vacancy_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_stage": {
+          "name": "vacancy_stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'listed'"
+        },
+        "vacancy_skip_reason": {
+          "name": "vacancy_skip_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_text_hash": {
+          "name": "vacancy_text_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_data": {
+          "name": "vacancy_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_first_seen_at": {
+          "name": "vacancy_first_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "vacancy_last_seen_at": {
+          "name": "vacancy_last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "vacancy_closed_at": {
+          "name": "vacancy_closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_checked_at": {
+          "name": "vacancy_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_text_url": {
+          "name": "vacancy_text_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_text_searched_at": {
+          "name": "vacancy_text_searched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vacancy_text_searches": {
+          "name": "vacancy_text_searches",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "vacancies_source_id_idx": {
+          "name": "vacancies_source_id_idx",
+          "columns": [
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vacancies_source_id_sources_source_id_fk": {
+          "name": "vacancies_source_id_sources_source_id_fk",
+          "tableFrom": "vacancies",
+          "tableTo": "sources",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "source_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "vacancies_vacancy_url_uq": {
+          "name": "vacancies_vacancy_url_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "vacancy_url"
+          ]
+        },
+        "vacancies_dedup_key_country_uq": {
+          "name": "vacancies_dedup_key_country_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "vacancy_dedup_key",
+            "vacancy_dedup_country"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vacancy_actions": {
+      "name": "vacancy_actions",
+      "schema": "",
+      "columns": {
+        "vacancy_action_id": {
+          "name": "vacancy_action_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "vacancy_actions_vacancy_action_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "vacancy_id": {
+          "name": "vacancy_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_action_kind": {
+          "name": "vacancy_action_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_action_message_id": {
+          "name": "vacancy_action_message_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "vacancy_actions_vacancy_id_idx": {
+          "name": "vacancy_actions_vacancy_id_idx",
+          "columns": [
+            {
+              "expression": "vacancy_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vacancy_actions_vacancy_id_vacancies_vacancy_id_fk": {
+          "name": "vacancy_actions_vacancy_id_vacancies_vacancy_id_fk",
+          "tableFrom": "vacancy_actions",
+          "tableTo": "vacancies",
+          "columnsFrom": [
+            "vacancy_id"
+          ],
+          "columnsTo": [
+            "vacancy_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vacancy_matches": {
+      "name": "vacancy_matches",
+      "schema": "",
+      "columns": {
+        "vacancy_match_id": {
+          "name": "vacancy_match_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "vacancy_matches_vacancy_match_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "vacancy_id": {
+          "name": "vacancy_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resume_id": {
+          "name": "resume_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_match_verdict": {
+          "name": "vacancy_match_verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vacancy_match_reasons": {
+          "name": "vacancy_match_reasons",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "vacancy_match_notified_at": {
+          "name": "vacancy_match_notified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dt_create": {
+          "name": "dt_create",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dt_update": {
+          "name": "dt_update",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "vacancy_matches_resume_id_idx": {
+          "name": "vacancy_matches_resume_id_idx",
+          "columns": [
+            {
+              "expression": "resume_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vacancy_matches_vacancy_id_vacancies_vacancy_id_fk": {
+          "name": "vacancy_matches_vacancy_id_vacancies_vacancy_id_fk",
+          "tableFrom": "vacancy_matches",
+          "tableTo": "vacancies",
+          "columnsFrom": [
+            "vacancy_id"
+          ],
+          "columnsTo": [
+            "vacancy_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "vacancy_matches_resume_id_resumes_resume_id_fk": {
+          "name": "vacancy_matches_resume_id_resumes_resume_id_fk",
+          "tableFrom": "vacancy_matches",
+          "tableTo": "resumes",
+          "columnsFrom": [
+            "resume_id"
+          ],
+          "columnsTo": [
+            "resume_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "vacancy_matches_vacancy_resume_uq": {
+          "name": "vacancy_matches_vacancy_resume_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "vacancy_id",
+            "resume_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

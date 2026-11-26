@@ -3,6 +3,10 @@
     "playwright": {
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "jobs-db": {
+      "command": "node",
+      "args": ["--env-file=.env", "--enable-source-maps", "apps/api/dist/mcp/jobs-db.server.js"]
     }
   }
 }

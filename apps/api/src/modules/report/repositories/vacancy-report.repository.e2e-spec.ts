@@ -207,6 +207,27 @@ describe('VacancyReportRepository (e2e)', () => {
     await expect(selected({ sinceDays: 11 })).resolves.toEqual([haifa.vacancy_id, kyiv.vacancy_id]);
   });
 
+  it('selects by the company, case aside, and reads the links and the first sighting of each position', async () => {
+    const source = await insertSource(database);
+    const northwind = await insertVacancy(database, source.source_id, {
+      vacancy_company: 'Northwind Traders',
+      vacancy_text_url: 'https://boards.example.com/northwind/1'
+    });
+
+    await insertVacancy(database, source.source_id, { vacancy_company: 'Contoso' });
+
+    const data = await repository.findAll({ company: 'NORTHWIND' });
+
+    expect(data.vacancies).toHaveLength(1);
+    expect(data.vacancies[0]).toMatchObject({
+      vacancyId: northwind.vacancy_id,
+      company: 'Northwind Traders',
+      url: northwind.vacancy_url,
+      textURL: 'https://boards.example.com/northwind/1',
+      firstSeenAt: northwind.vacancy_first_seen_at
+    });
+  });
+
   it('combines the conditions: every one must hold', async () => {
     const source = await insertSource(database);
     const wanted = await insertVacancy(database, source.source_id, { vacancy_title: 'Backend Engineer', vacancy_country: 'IL' });

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "job-agent-jobs-db": {
+      "command": "/usr/local/bin/node",
+      "args": [
+        "--env-file=/Users/owner/job-search-agent/.env",
+        "--enable-source-maps",
+        "/Users/owner/job-search-agent/apps/api/dist/mcp/jobs-db.server.js"
+      ]
+    }
+  }
+}

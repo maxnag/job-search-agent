@@ -35,6 +35,12 @@ describe('VacancyActionService (unit)', () => {
     expect(notifications.createAction).toHaveBeenCalledWith(7, VacancyActionKindEnum.INTERESTED, 555);
   });
 
+  it('stores a choice made outside Telegram without a message', async () => {
+    await subjectUnderTest.record(7, VacancyActionKindEnum.APPLIED);
+
+    expect(notifications.createAction).toHaveBeenCalledWith(7, VacancyActionKindEnum.APPLIED, undefined);
+  });
+
   it('passes a failed write on', async () => {
     notifications.createAction.mockRejectedValue(new Error('foreign key violation'));
 

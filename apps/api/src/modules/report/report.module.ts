@@ -4,10 +4,10 @@ import { VacancyReportRepository } from './repositories/vacancy-report.repositor
 import { VacancyReportService } from './services/vacancy-report.service.js';
 
 /**
- * The report of every position — database only, the commands use it
+ * The report of every position — database only, the commands and the MCP server use it
  */
 @Module({
   providers: [VacancyReportRepository, VacancyReportService],
-  exports: [VacancyReportService]
+  exports: [VacancyReportRepository, VacancyReportService]
 })
 export class ReportModule {}

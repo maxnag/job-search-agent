@@ -130,7 +130,9 @@ export const envSchema = z
     JOB_MAIL_INTERVAL_MINUTES: positiveInt().default(30),
     JOB_MAIL_TIMEOUT_MS: positiveInt().default(30000),
     JOB_MAIL_TEXT_RECHECK_DAYS: positiveInt().default(7),
-    JOB_MAIL_TEXT_MAX_SEARCHES: positiveInt().default(3)
+    JOB_MAIL_TEXT_MAX_SEARCHES: positiveInt().default(3),
+
+    MCP_MAX_ROWS: positiveInt().default(50)
   })
   .superRefine((env, context) => {
     const key = LLM_PROVIDER_REQUIRED_KEYS[env.LLM_PROVIDER];

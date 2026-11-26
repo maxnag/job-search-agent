@@ -54,6 +54,13 @@ export interface IVacancyReportFilter {
   readonly title?: string;
 
   /**
+   * Text the company contains, case aside
+   *
+   * @var {string}
+   */
+  readonly company?: string;
+
+  /**
    * First seen within this many days
    *
    * @var {number}

@@ -1,9 +1,6 @@
 /**
- * MCP servers of the project — the agents' tools, also plugged into Claude Desktop
+ * MCP servers of the project — the agents' tools, also plugged into Claude Desktop and Claude Code
  */
 export enum MCPServerNameEnum {
-  JOBS_DB = 'jobs-db',
-  BROWSER = 'browser',
-  GMAIL = 'gmail',
-  NOTIFY = 'notify'
+  JOBS_DB = 'jobs-db'
 }

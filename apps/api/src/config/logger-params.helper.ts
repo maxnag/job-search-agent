@@ -25,6 +25,20 @@ export const LOG_SERVICE_NAME = 'api';
 const UNLOGGED_PATHS: ReadonlySet<string> = new Set(['/health']);
 
 /**
+ * File descriptor of stdout — where the API writes its lines
+ *
+ * @type {number}
+ */
+const STDOUT_FD = 1;
+
+/**
+ * File descriptor of stderr — where an MCP server writes its lines: its stdout carries the protocol only
+ *
+ * @type {number}
+ */
+const STDERR_FD = 2;
+
+/**
  * Level of the line that closes a request, by who has to act: unavailability and rate limits are handled (`warn`),
  * any other 5xx is a failure (`error`), everything else is an ordinary event (`info`)
  *
@@ -47,20 +61,21 @@ export function requestLogLevel(_request: Request, response: Response, error?: E
 }
 
 /**
- * Where the lines go: one readable line each in development, JSON on stdout otherwise; with an OTLP endpoint also to
- * Loki. The exporter reads the endpoint from `OTEL_EXPORTER_OTLP_ENDPOINT` itself
+ * Where the lines go: one readable line each in development, JSON otherwise — both to the given descriptor; with an
+ * OTLP endpoint also to Loki. The exporter reads the endpoint from `OTEL_EXPORTER_OTLP_ENDPOINT` itself
  *
  * @param {ConfigService<IEnv, true>} configService
+ * @param {number} destination
  *
  * @returns {TransportTargetOptions[]}
  */
-function logTargets(configService: ConfigService<IEnv, true>): TransportTargetOptions[] {
+function logTargets(configService: ConfigService<IEnv, true>, destination: number): TransportTargetOptions[] {
   const level = configService.get('LOG_LEVEL', { infer: true });
   const nodeEnv = configService.get('NODE_ENV', { infer: true });
   const targets: TransportTargetOptions[] = [
     nodeEnv === 'development'
-      ? { target: 'pino-pretty', level, options: { messageKey: LOG_MESSAGE_KEY, singleLine: true, ignore: 'pid,hostname' } }
-      : { target: 'pino/file', level, options: { destination: 1 } }
+      ? { target: 'pino-pretty', level, options: { messageKey: LOG_MESSAGE_KEY, singleLine: true, ignore: 'pid,hostname', destination } }
+      : { target: 'pino/file', level, options: { destination } }
   ];
 
   if (configService.get('OTEL_EXPORTER_OTLP_ENDPOINT', { infer: true }) !== undefined) {
@@ -83,20 +98,20 @@ function logTargets(configService: ConfigService<IEnv, true>): TransportTargetOp
 }
 
 /**
- * Settings of the API logger: JSON lines with the request id on every line of a request, request lines without
- * headers or bodies, credentials redacted
+ * Settings of the logger, its lines written to the given descriptor
  *
  * @param {ConfigService<IEnv, true>} configService
+ * @param {number} destination
  *
  * @returns {Params<Request, Response>}
  */
-export function loggerParams(configService: ConfigService<IEnv, true>): Params<Request, Response> {
+function paramsFor(configService: ConfigService<IEnv, true>, destination: number): Params<Request, Response> {
   return {
     pinoHttp: {
       level: configService.get('LOG_LEVEL', { infer: true }),
       messageKey: LOG_MESSAGE_KEY,
       redact: [...LOG_REDACT_PATHS],
-      transport: { targets: logTargets(configService) },
+      transport: { targets: logTargets(configService, destination) },
       genReqId: () => randomUUID(),
       quietReqLogger: true,
       customAttributeKeys: { reqId: LOG_REQUEST_ID_KEY, responseTime: 'duration_ms' },
@@ -108,4 +123,27 @@ export function loggerParams(configService: ConfigService<IEnv, true>): Params<R
       }
     }
   };
+}
+
+/**
+ * Settings of the API logger: JSON lines with the request id on every line of a request, request lines without
+ * headers or bodies, credentials redacted
+ *
+ * @param {ConfigService<IEnv, true>} configService
+ *
+ * @returns {Params<Request, Response>}
+ */
+export function loggerParams(configService: ConfigService<IEnv, true>): Params<Request, Response> {
+  return paramsFor(configService, STDOUT_FD);
+}
+
+/**
+ * Settings of the logger of an MCP server: the same lines, written to stderr — one line on stdout breaks the session
+ *
+ * @param {ConfigService<IEnv, true>} configService
+ *
+ * @returns {Params<Request, Response>}
+ */
+export function mcpLoggerParams(configService: ConfigService<IEnv, true>): Params<Request, Response> {
+  return paramsFor(configService, STDERR_FD);
 }
