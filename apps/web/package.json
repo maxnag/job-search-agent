@@ -1,0 +1,36 @@
+{
+  "name": "@job-agent/web",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env scripts/next.mjs dev",
+    "build": "node scripts/next.mjs build",
+    "start": "node --env-file-if-exists=../../.env scripts/next.mjs start",
+    "typegen": "next typegen"
+  },
+  "dependencies": {
+    "@job-agent/shared": "workspace:*",
+    "@mantine/core": "^9.8.1",
+    "@mantine/hooks": "^9.8.1",
+    "@tabler/icons-react": "^3.52.0",
+    "next": "^16.4.6",
+    "next-intl": "^4.15.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "jsdom": "^31.0.1",
+    "postcss": "^8.5.33",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "vitest": "^5.1.0"
+  }
+}

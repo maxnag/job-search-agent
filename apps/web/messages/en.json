@@ -1,0 +1,53 @@
+{
+  "app": {
+    "title": "Job Search Agent"
+  },
+  "nav": {
+    "vacancies": "Vacancies",
+    "companies": "Companies",
+    "sources": "Sources",
+    "menu": "Toggle the menu"
+  },
+  "pages": {
+    "vacancies": {
+      "title": "Vacancies",
+      "empty": "The list of vacancies with filters comes in phase 1."
+    },
+    "companies": {
+      "title": "Companies",
+      "empty": "Companies come in phase 2."
+    },
+    "sources": {
+      "title": "Sources",
+      "empty": "Sources come in phase 2."
+    }
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "uk": "Українська"
+  },
+  "colorScheme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "auto": "System"
+  },
+  "apiStatus": {
+    "ok": "API: running",
+    "degraded": "API: running, but a database, Redis or the LLM is not",
+    "down": "API: not reachable",
+    "checking": "API: checking…"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "description": "The page could not be shown. The API may be stopped.",
+    "retry": "Try again",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "There is no such page.",
+    "home": "To the vacancies"
+  },
+  "common": {
+    "loading": "Loading…"
+  }
+}

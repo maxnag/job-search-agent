@@ -541,3 +541,33 @@ Dependencies stay checked by `pnpm audit` in CI; the one-week delay still applie
 - (+) Shorter CI and release runs; no image to keep secure that nobody uses
 - (−) `APP_VERSION` is no longer set by a build — `/health` and the logs say `dev` unless it is set by hand
 - (−) A deploy, if it ever comes, starts with a new image and a new ADR
+
+---
+
+## ADR-025: Web UI — Next.js as the only door to the API, on localhost
+
+**Status:** Accepted
+
+**Context:** the owner wants to see the vacancies, companies and sources, filter the vacancies, open a description by
+its link and make the same choice a card button makes — from a browser, later from a phone or a tablet over
+Tailscale. Telegram shows one vacancy at a time; `vacancies:report` and the MCP server answer questions but show no
+list to work through. There is no production: the UI lives on the owner's machine, next to the API.
+
+**Decision:**
+- **`apps/web` is a Next.js app (App Router, React)**, chosen over Nuxt so the owner learns React
+- **The browser talks only to Next:** server components and server actions call the NestJS API through one
+  server-only client (`fetch`, a timeout, Zod on every answer); the address of the API never reaches the browser,
+  and the API keeps no CORS
+- **Mantine** is the UI kit — a full set of components with a light and a dark scheme; icons from Tabler
+- **The language is the first segment of the address** (`/en/…`, `/uk/…`, next-intl); without one, the browser's
+  language or the cookie of the last choice decides. English and Ukrainian, a switcher in the header
+- **Filters live in the query string**, so a list can be shared or bookmarked as a link
+- **Localhost only:** the API and the web listen on `127.0.0.1` (`APP_HOST`, `WEB_HOST`); no token, no login, no
+  image. Remote access is `tailscale serve` on the Mac, never a public port. Requests to the API by hand go through
+  a Postman workspace kept by the Postman MCP server, not an OpenAPI document
+
+**Consequences:**
+- (+) One place reads the API; the browser holds no secret and no address
+- (+) The vacancy list, its filters and the actions share the API's queries with the MCP server and the commands
+- (−) A second app to run (`pnpm web:dev`) and a React toolchain next to the Nest one
+- (−) Next renders on every request — the API must be running for any page with data

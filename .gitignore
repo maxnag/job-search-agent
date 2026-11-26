@@ -77,6 +77,9 @@ web_modules/
 # Next.js build output
 .next
 out
+next-env.d.ts
+.playwright-mcp
+apps/web/messages/*.d.json.ts
 
 # Nuxt.js build / generate output
 .nuxt
