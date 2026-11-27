@@ -69,6 +69,18 @@ describe('PipelineEventsService (unit)', () => {
     );
   });
 
+  it('queues one deduplicated sync of the choice per vacancy', async () => {
+    await subjectUnderTest.vacancyActionRecorded(7);
+
+    expect(notifyQueue.add).toHaveBeenCalledWith(
+      JobNameEnum.VACANCY_ACTION_SYNC,
+      { vacancyId: 7 },
+      {
+        deduplication: { id: `${JobNameEnum.VACANCY_ACTION_SYNC}:7` }
+      }
+    );
+  });
+
   it('tells about closed vacancies only the ones the owner got a card for', async () => {
     vacancies.findNotifiedIds.mockResolvedValue([8]);
 

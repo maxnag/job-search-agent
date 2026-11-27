@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import en from '../../messages/en.json';
 import uk from '../../messages/uk.json';
+import { formats } from './formats';
 import requestConfig from './request';
 
 vi.mock('next-intl/server', () => ({ getRequestConfig: (factory: unknown) => factory }));
@@ -11,7 +12,14 @@ vi.mock('next/root-params', () => ({ locale: vi.fn() }));
 /**
  * The factory `getRequestConfig` receives, called the way next-intl calls it
  */
-const loadConfig = requestConfig as unknown as (params: { locale?: string }) => Promise<{ locale: string; messages: unknown }>;
+const loadConfig = requestConfig as unknown as (params: {
+  locale?: string;
+}) => Promise<{ locale: string; messages: unknown; formats: unknown; timeZone: string }>;
+
+/**
+ * Time zone of the machine the spec runs on — the config takes the one of the machine the web runs on
+ */
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 describe('request config', () => {
   const rootLocaleMock = vi.mocked(rootLocale);
@@ -23,13 +31,13 @@ describe('request config', () => {
   it('takes the language of the address and its dictionary', async () => {
     rootLocaleMock.mockResolvedValue('uk');
 
-    await expect(loadConfig({})).resolves.toEqual({ locale: 'uk', messages: uk });
+    await expect(loadConfig({})).resolves.toEqual({ locale: 'uk', messages: uk, formats, timeZone: TIME_ZONE });
   });
 
   it('prefers the language next-intl was given explicitly', async () => {
     rootLocaleMock.mockResolvedValue('uk');
 
-    await expect(loadConfig({ locale: 'en' })).resolves.toEqual({ locale: 'en', messages: en });
+    await expect(loadConfig({ locale: 'en' })).resolves.toEqual({ locale: 'en', messages: en, formats, timeZone: TIME_ZONE });
     expect(rootLocaleMock).not.toHaveBeenCalled();
   });
 
@@ -39,6 +47,6 @@ describe('request config', () => {
   ])('falls back to English for %s', async (_case, value) => {
     rootLocaleMock.mockResolvedValue(value as never);
 
-    await expect(loadConfig({})).resolves.toEqual({ locale: 'en', messages: en });
+    await expect(loadConfig({})).resolves.toEqual({ locale: 'en', messages: en, formats, timeZone: TIME_ZONE });
   });
 });

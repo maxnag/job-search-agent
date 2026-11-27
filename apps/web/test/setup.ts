@@ -15,12 +15,13 @@ vi.mock(import('next/navigation'), async importOriginal => ({
 
 /**
  * jsdom has no layout: Mantine asks for media queries and watches element sizes, so both get a stub that never
- * matches and never fires
+ * fires and never matches — but the empty query, which a browser matches always (mantine-datatable asks it for a
+ * column without a media query)
  */
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn((query: string) => ({
-    matches: false,
+    matches: query === '',
     media: query,
     onchange: null,
     addEventListener: vi.fn(),
@@ -54,6 +55,8 @@ class ResizeObserverStub {
 window.ResizeObserver = ResizeObserverStub;
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+window.HTMLElement.prototype.scrollTo = vi.fn();
 
 afterEach(() => {
   cleanup();

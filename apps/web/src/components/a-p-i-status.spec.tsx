@@ -35,3 +35,22 @@ describe('APIStatusFallback', () => {
     expect(badge?.getAttribute('style')).toContain('--mantine-color-gray');
   });
 });
+
+describe('APIStatus on a phone', () => {
+  it('shows only the word API, the state in its colour and in the title', async () => {
+    vi.mocked(getAPIHealth).mockResolvedValue(APIHealthStatusEnum.DOWN);
+
+    renderWithProviders(await APIStatus({ compact: true }));
+
+    const badge = screen.getByText('API').closest('.mantine-Badge-root');
+
+    expect(badge?.getAttribute('style')).toContain('--mantine-color-red');
+    expect(badge?.getAttribute('title')).toBe('API: not reachable');
+  });
+
+  it('shows only the word API while the API is asked', async () => {
+    renderWithProviders(await APIStatusFallback({ compact: true }));
+
+    expect(screen.getByText('API').closest('.mantine-Badge-root')?.getAttribute('title')).toBe('API: checking…');
+  });
+});

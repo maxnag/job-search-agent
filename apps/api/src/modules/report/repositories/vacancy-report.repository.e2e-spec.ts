@@ -3,11 +3,23 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { truncateTables, vacancies } from '@job-agent/db';
-import { SourceFetchModeEnum, SourceStatusEnum, VacancyMatchVerdictEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
+import {
+  SeniorityLevelEnum,
+  SortOrderEnum,
+  SourceFetchModeEnum,
+  SourceStatusEnum,
+  VacancyActionKindEnum,
+  VacancyLastActionEnum,
+  VacancyMatchVerdictEnum,
+  VacancySortEnum,
+  VacancyStageEnum,
+  WorkModeEnum
+} from '@job-agent/shared';
 
 import { testDatabaseProvider } from '../../../../test/test-database.provider.js';
 import {
   PIPELINE_TABLES,
+  insertAction,
   insertMatch,
   insertProfileWithResume,
   insertResume,
@@ -17,6 +29,7 @@ import {
 import { DatabaseService } from '../../database/services/database.service.js';
 import { MatchRuleEnum } from '../../matching/enums/match-rule.enum.js';
 import type { IVacancyReportFilter } from '../interfaces/vacancy-report-filter.interface.js';
+import type { IVacancyReportPageRequest } from '../interfaces/vacancy-report-page.interface.js';
 import { VacancyReportRepository } from './vacancy-report.repository.js';
 
 describe('VacancyReportRepository (e2e)', () => {
@@ -252,5 +265,133 @@ describe('VacancyReportRepository (e2e)', () => {
     await insertVacancy(database, first.source_id, { vacancy_stage: VacancyStageEnum.CLOSED });
 
     await expect(selected({ limit: 2 })).resolves.toEqual([firstIds[1], firstIds[2], only.vacancy_id]);
+  });
+
+  describe('findPage', () => {
+    const NEWEST: IVacancyReportPageRequest = { page: 1, pageSize: 25, sort: VacancySortEnum.FIRST_SEEN_AT, order: SortOrderEnum.DESC };
+    let sourceId: number;
+
+    /**
+     * Ids of the page the filter selects
+     *
+     * @param {IVacancyReportFilter} filter
+     * @param {IVacancyReportPageRequest} [request]
+     *
+     * @returns {Promise<number[]>}
+     */
+    async function page(filter: IVacancyReportFilter, request: IVacancyReportPageRequest = NEWEST): Promise<number[]> {
+      return (await repository.findPage(filter, request)).vacancies.map(vacancy => vacancy.vacancyId);
+    }
+
+    beforeEach(async () => {
+      sourceId = (await insertSource(database, { source_name: 'Northwind' })).source_id;
+    });
+
+    it('counts every position the filter selects and gives the page asked for, newest first among equals', async () => {
+      const ids: number[] = [];
+
+      for (let index = 0; index < 5; index += 1) {
+        ids.push((await insertVacancy(database, sourceId, { vacancy_first_seen_at: new Date('2026-11-20T10:00:00Z') })).vacancy_id);
+      }
+
+      const second = await repository.findPage({}, { ...NEWEST, page: 2, pageSize: 2 });
+
+      expect(second.total).toBe(5);
+      expect(second.vacancies.map(vacancy => vacancy.vacancyId)).toEqual([ids[2], ids[1]]);
+      await expect(repository.findPage({}, { ...NEWEST, page: 4, pageSize: 2 })).resolves.toMatchObject({ total: 5, vacancies: [] });
+    });
+
+    it('sorts by title or company in either direction', async () => {
+      const beta = await insertVacancy(database, sourceId, { vacancy_title: 'Beta', vacancy_company: 'Contoso' });
+      const alpha = await insertVacancy(database, sourceId, { vacancy_title: 'Alpha', vacancy_company: 'Northwind' });
+
+      await expect(page({}, { ...NEWEST, sort: VacancySortEnum.TITLE, order: SortOrderEnum.ASC })).resolves.toEqual([
+        alpha.vacancy_id,
+        beta.vacancy_id
+      ]);
+      await expect(page({}, { ...NEWEST, sort: VacancySortEnum.COMPANY, order: SortOrderEnum.DESC })).resolves.toEqual([
+        alpha.vacancy_id,
+        beta.vacancy_id
+      ]);
+    });
+
+    it('selects by several countries and levels, a city case aside and a text in the title or the company', async () => {
+      const telAviv = await insertVacancy(database, sourceId, {
+        vacancy_country: 'IL',
+        vacancy_city: 'Tel Aviv',
+        vacancy_level: SeniorityLevelEnum.SENIOR,
+        vacancy_title: 'Platform Engineer'
+      });
+      const kyiv = await insertVacancy(database, sourceId, {
+        vacancy_country: 'UA',
+        vacancy_city: 'Kyiv',
+        vacancy_level: SeniorityLevelEnum.STAFF,
+        vacancy_company: 'Contoso'
+      });
+      const berlin = await insertVacancy(database, sourceId, { vacancy_country: 'DE', vacancy_level: SeniorityLevelEnum.SENIOR });
+      const junior = await insertVacancy(database, sourceId, { vacancy_country: 'IL', vacancy_level: SeniorityLevelEnum.JUNIOR });
+
+      await expect(page({ countries: ['il', 'UA'] })).resolves.toEqual([junior.vacancy_id, kyiv.vacancy_id, telAviv.vacancy_id]);
+      await expect(page({ levels: [SeniorityLevelEnum.SENIOR, SeniorityLevelEnum.STAFF] })).resolves.toEqual([
+        berlin.vacancy_id,
+        kyiv.vacancy_id,
+        telAviv.vacancy_id
+      ]);
+      await expect(page({ city: 'tel aviv' })).resolves.toEqual([telAviv.vacancy_id]);
+      await expect(page({ query: 'contoso' })).resolves.toEqual([kyiv.vacancy_id]);
+      await expect(page({ query: 'platform' })).resolves.toEqual([telAviv.vacancy_id]);
+    });
+
+    it('selects by the latest choice of the owner, "none" for a position never chosen', async () => {
+      const applied = await insertVacancy(database, sourceId);
+      const skippedThenInterested = await insertVacancy(database, sourceId);
+      const untouched = await insertVacancy(database, sourceId);
+
+      await insertAction(database, applied.vacancy_id, VacancyActionKindEnum.APPLIED);
+      await insertAction(database, skippedThenInterested.vacancy_id, VacancyActionKindEnum.SKIPPED);
+      await insertAction(database, skippedThenInterested.vacancy_id, VacancyActionKindEnum.INTERESTED);
+
+      await expect(page({ lastActions: [VacancyLastActionEnum.SKIPPED] })).resolves.toEqual([]);
+      await expect(page({ lastActions: [VacancyLastActionEnum.INTERESTED, VacancyLastActionEnum.NONE] })).resolves.toEqual([
+        untouched.vacancy_id,
+        skippedThenInterested.vacancy_id
+      ]);
+
+      const rows = (await repository.findPage({}, NEWEST)).vacancies;
+
+      expect(rows.map(row => [row.vacancyId, row.lastAction])).toEqual([
+        [untouched.vacancy_id, null],
+        [skippedThenInterested.vacancy_id, VacancyActionKindEnum.INTERESTED],
+        [applied.vacancy_id, VacancyActionKindEnum.APPLIED]
+      ]);
+    });
+
+    it('reads the source name and the verdicts of the page against the current resumes with their findings', async () => {
+      const { profileId, resumeId: older } = await insertProfileWithResume(database, 'developer', { isCurrent: false });
+      const current = await insertResume(database, profileId);
+      const vacancy = await insertVacancy(database, sourceId, { vacancy_stage: VacancyStageEnum.EXTRACTED });
+      const reasons = [{ rule: MatchRuleEnum.EXPERIENCE, effect: VacancyMatchVerdictEnum.ALMOST, message: 'asks for 5 years' }];
+
+      await insertMatch(database, vacancy.vacancy_id, older, { vacancy_match_verdict: VacancyMatchVerdictEnum.FIT });
+      await insertMatch(database, vacancy.vacancy_id, current, {
+        vacancy_match_verdict: VacancyMatchVerdictEnum.ALMOST,
+        vacancy_match_reasons: reasons
+      });
+
+      const result = await repository.findPage({ verdicts: [VacancyMatchVerdictEnum.ALMOST] }, NEWEST);
+
+      expect(result.vacancies[0]?.sourceName).toBe('Northwind');
+      expect(result.matches).toEqual([
+        { vacancyId: vacancy.vacancy_id, profileName: 'developer', verdict: VacancyMatchVerdictEnum.ALMOST, reasons }
+      ]);
+    });
+
+    it('hides closed positions unless asked, as the report does', async () => {
+      const closed = await insertVacancy(database, sourceId, { vacancy_stage: VacancyStageEnum.CLOSED });
+      const open = await insertVacancy(database, sourceId);
+
+      await expect(page({})).resolves.toEqual([open.vacancy_id]);
+      await expect(page({ closed: true })).resolves.toEqual([open.vacancy_id, closed.vacancy_id]);
+    });
   });
 });
