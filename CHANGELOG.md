@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/maxnag/job-search-agent/compare/v0.9.0...v0.9.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **api:** ollama thinking and keep-alive from step params ([#29](https://github.com/maxnag/job-search-agent/issues/29)) ([be6192a](https://github.com/maxnag/job-search-agent/commit/be6192a74cfb0cf38d8e5f41c2ed0b51c4889d73))
+
 ## [0.9.0](https://github.com/maxnag/job-search-agent/compare/v0.8.0...v0.9.0) (2026-11-26)
 
 
