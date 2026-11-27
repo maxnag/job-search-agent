@@ -10,6 +10,7 @@ import { SourceCandidateStatusEnum, VacancyActionKindEnum } from '@job-agent/sha
 import { createConfigMock } from '../../../../test/config-service.mock.js';
 import { SourceCandidateDecisionEnum } from '../../discovery/enums/source-candidate-decision.enum.js';
 import { SourceCandidateService } from '../../discovery/services/source-candidate.service.js';
+import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
 import { candidateKeyboard } from '../helpers/source-candidate-card.helper.js';
 import { actionKeyboard } from '../helpers/vacancy-card.helper.js';
 import { TelegramService } from './telegram.service.js';
@@ -27,12 +28,28 @@ vi.mock('grammy', async importOriginal => {
       this.start = vi.fn().mockResolvedValue(undefined);
       this.stop = vi.fn().mockResolvedValue(undefined);
       this.isRunning = vi.fn().mockReturnValue(true);
-      this.api = { sendMessage: vi.fn().mockResolvedValue({ message_id: 555 }) };
+      this.api = { sendMessage: vi.fn().mockResolvedValue({ message_id: 555 }), editMessageReplyMarkup: vi.fn().mockResolvedValue(true) };
     })
   };
 });
 
 const CHAT_ID = '-1001234567890';
+
+/**
+ * The error Telegram answers an edit with
+ *
+ * @param {string} description
+ *
+ * @returns {GrammyError}
+ */
+function telegramError(description: string): GrammyError {
+  return new GrammyError(
+    "Call to 'editMessageReplyMarkup' failed!",
+    { ok: false, error_code: 400, description },
+    'editMessageReplyMarkup',
+    {}
+  );
+}
 
 /**
  * The parts of a grammY bot the service uses
@@ -43,7 +60,7 @@ interface IFakeBot {
   readonly start: ReturnType<typeof vi.fn>;
   readonly stop: ReturnType<typeof vi.fn>;
   readonly isRunning: ReturnType<typeof vi.fn>;
-  readonly api: { readonly sendMessage: ReturnType<typeof vi.fn> };
+  readonly api: { readonly sendMessage: ReturnType<typeof vi.fn>; readonly editMessageReplyMarkup: ReturnType<typeof vi.fn> };
 }
 
 describe('TelegramService (unit)', () => {
@@ -51,6 +68,7 @@ describe('TelegramService (unit)', () => {
   let subjectUnderTest: TelegramService;
   let actions: DeepMocked<VacancyActionService>;
   let candidates: DeepMocked<SourceCandidateService>;
+  let events: DeepMocked<PipelineEventsService>;
 
   /**
    * Build the service with the given Telegram settings
@@ -65,6 +83,7 @@ describe('TelegramService (unit)', () => {
         TelegramService,
         { provide: VacancyActionService, useValue: actions },
         { provide: SourceCandidateService, useValue: candidates },
+        { provide: PipelineEventsService, useValue: events },
         { provide: ConfigService, useValue: createConfigMock(env) }
       ]
     }).compile();
@@ -84,6 +103,7 @@ describe('TelegramService (unit)', () => {
     vi.mocked(Bot).mockClear();
     actions = createMock<VacancyActionService>();
     candidates = createMock<SourceCandidateService>();
+    events = createMock<PipelineEventsService>();
     await compile({ TELEGRAM_BOT_TOKEN: '123456:fictional-token', TELEGRAM_CHAT_ID: CHAT_ID });
   });
 
@@ -135,6 +155,10 @@ describe('TelegramService (unit)', () => {
       await expect(subjectUnderTest.send('<b>x</b>')).rejects.toThrow(/^TELEGRAM_NOT_CONFIGURED:/);
     });
 
+    it('refuses to edit the buttons of a message', async () => {
+      await expect(subjectUnderTest.editKeyboard(555, actionKeyboard(7))).rejects.toThrow(/^TELEGRAM_NOT_CONFIGURED:/);
+    });
+
     it('has nothing to stop', async () => {
       await expect(subjectUnderTest.onApplicationShutdown()).resolves.toBeUndefined();
     });
@@ -155,6 +179,33 @@ describe('TelegramService (unit)', () => {
       await subjectUnderTest.send('card', keyboard);
 
       expect(bot().api.sendMessage).toHaveBeenCalledWith(CHAT_ID, 'card', expect.objectContaining({ reply_markup: keyboard }));
+    });
+  });
+
+  describe('editKeyboard', () => {
+    it('replaces the buttons of the message in the chat', async () => {
+      const keyboard = actionKeyboard(7, VacancyActionKindEnum.APPLIED);
+
+      await expect(subjectUnderTest.editKeyboard(555, keyboard)).resolves.toBe(true);
+      expect(bot().api.editMessageReplyMarkup).toHaveBeenCalledWith(CHAT_ID, 555, { reply_markup: keyboard });
+    });
+
+    it('takes an edit that changes nothing as done', async () => {
+      bot().api.editMessageReplyMarkup.mockRejectedValue(telegramError('Bad Request: message is not modified'));
+
+      await expect(subjectUnderTest.editKeyboard(555, actionKeyboard(7))).resolves.toBe(true);
+    });
+
+    it('answers false for a message the chat no longer has', async () => {
+      bot().api.editMessageReplyMarkup.mockRejectedValue(telegramError('Bad Request: message to edit not found'));
+
+      await expect(subjectUnderTest.editKeyboard(555, actionKeyboard(7))).resolves.toBe(false);
+    });
+
+    it('lets another refusal fail', async () => {
+      bot().api.editMessageReplyMarkup.mockRejectedValue(telegramError('Bad Request: chat not found'));
+
+      await expect(subjectUnderTest.editKeyboard(555, actionKeyboard(7))).rejects.toThrow(GrammyError);
     });
   });
 
@@ -271,28 +322,29 @@ describe('TelegramService (unit)', () => {
       return markup.reply_markup.inline_keyboard.flat().map(button => button.text);
     }
 
-    /**
-     * The error Telegram answers an edit with
-     *
-     * @param {string} description
-     *
-     * @returns {GrammyError}
-     */
-    function telegramError(description: string): GrammyError {
-      return new GrammyError(
-        "Call to 'editMessageReplyMarkup' failed!",
-        { ok: false, error_code: 400, description },
-        'editMessageReplyMarkup',
-        {}
-      );
-    }
-
     it('records the action, ticks the button and confirms', async () => {
       const context = await press(-1001234567890, 'action:7:interested');
 
       expect(actions.record).toHaveBeenCalledWith(7, VacancyActionKindEnum.INTERESTED, 555);
       expect(editedLabels(context)).toEqual(['✓ Interested', 'Skip', 'Applied']);
       expect(context.answerCallbackQuery).toHaveBeenCalledWith({ text: 'Saved' });
+    });
+
+    it('queues the tick under the other messages of the vacancy once a choice is stored', async () => {
+      actions.record.mockResolvedValue(true);
+
+      await press(-1001234567890, 'action:7:applied');
+
+      expect(events.vacancyActionRecorded).toHaveBeenCalledWith(7);
+    });
+
+    it('queues nothing for a repeat of the latest choice and says it was already saved', async () => {
+      actions.record.mockResolvedValue(false);
+
+      const context = await press(-1001234567890, 'action:7:applied');
+
+      expect(events.vacancyActionRecorded).not.toHaveBeenCalled();
+      expect(context.answerCallbackQuery).toHaveBeenCalledWith({ text: 'Already saved' });
     });
 
     it('ignores a press from another chat', async () => {

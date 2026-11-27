@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { type SQL, and, asc, eq, exists, gte, ilike, inArray, lte, ne, or, sql } from 'drizzle-orm';
+import { type AnyColumn, type SQL, and, asc, count, desc, eq, exists, gte, ilike, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 
-import { profiles, resumes, sources, vacancies, vacancyMatches } from '@job-agent/db';
-import { VacancyStageEnum } from '@job-agent/shared';
+import { profiles, resumes, sources, vacancies, vacancyActions, vacancyMatches } from '@job-agent/db';
+import { SortOrderEnum, VacancyLastActionEnum, VacancySortEnum, VacancyStageEnum } from '@job-agent/shared';
 
 import { DatabaseService } from '../../database/services/database.service.js';
 import type { IMatchReason } from '../../matching/interfaces/match-reason.interface.js';
 import type { IVacancyReportFilter } from '../interfaces/vacancy-report-filter.interface.js';
+import type { IVacancyReportPage, IVacancyReportPageRequest } from '../interfaces/vacancy-report-page.interface.js';
 import type { IVacancyReportData } from '../interfaces/vacancy-report.interface.js';
 
 /**
@@ -15,6 +16,17 @@ import type { IVacancyReportData } from '../interfaces/vacancy-report.interface.
  * @type {RegExp}
  */
 const LIKE_SPECIAL = /[\\%_]/g;
+
+/**
+ * The column each sort of the list orders by
+ *
+ * @type {Readonly<Record<VacancySortEnum, AnyColumn>>}
+ */
+const SORT_COLUMNS: Readonly<Record<VacancySortEnum, AnyColumn>> = {
+  [VacancySortEnum.FIRST_SEEN_AT]: vacancies.vacancy_first_seen_at,
+  [VacancySortEnum.TITLE]: vacancies.vacancy_title,
+  [VacancySortEnum.COMPANY]: vacancies.vacancy_company
+};
 
 /**
  * Reads what the report of the vacancies shows
@@ -112,6 +124,93 @@ export class VacancyReportRepository {
   }
 
   /**
+   * One page of the positions the filter selects, in the order asked for — the newest first among equals — with the
+   * number of all of them, the latest choice about each and their verdicts against the current resume versions
+   *
+   * @param {IVacancyReportFilter} filter `limit` is ignored — the page sets the size
+   * @param {IVacancyReportPageRequest} request
+   *
+   * @returns {Promise<IVacancyReportPage>}
+   */
+  async findPage(filter: IVacancyReportFilter, request: IVacancyReportPageRequest): Promise<IVacancyReportPage> {
+    const { db } = this.databaseService;
+    const latestActions = db
+      .selectDistinctOn([vacancyActions.vacancy_id], { vacancyId: vacancyActions.vacancy_id, kind: vacancyActions.vacancy_action_kind })
+      .from(vacancyActions)
+      .orderBy(asc(vacancyActions.vacancy_id), desc(vacancyActions.vacancy_action_id))
+      .as('latest_actions');
+    const where = and(...this.vacancyConditions(filter), this.lastActionCondition(latestActions.kind, filter.lastActions));
+    const direction = request.order === SortOrderEnum.ASC ? asc : desc;
+    const [rows, [counted]] = await Promise.all([
+      db
+        .select({
+          vacancyId: vacancies.vacancy_id,
+          title: vacancies.vacancy_title,
+          company: vacancies.vacancy_company,
+          city: vacancies.vacancy_city,
+          country: vacancies.vacancy_country,
+          workMode: vacancies.vacancy_work_mode,
+          level: vacancies.vacancy_level,
+          stage: vacancies.vacancy_stage,
+          sourceName: sources.source_name,
+          firstSeenAt: vacancies.vacancy_first_seen_at,
+          lastAction: latestActions.kind
+        })
+        .from(vacancies)
+        .innerJoin(sources, eq(sources.source_id, vacancies.source_id))
+        .leftJoin(latestActions, eq(latestActions.vacancyId, vacancies.vacancy_id))
+        .where(where)
+        .orderBy(direction(SORT_COLUMNS[request.sort]), desc(vacancies.vacancy_id))
+        .limit(request.pageSize)
+        .offset((request.page - 1) * request.pageSize),
+      db.select({ total: count() }).from(vacancies).leftJoin(latestActions, eq(latestActions.vacancyId, vacancies.vacancy_id)).where(where)
+    ]);
+    const vacancyIds = rows.map(row => row.vacancyId);
+    const matches =
+      vacancyIds.length === 0
+        ? []
+        : await db
+            .select({
+              vacancyId: vacancyMatches.vacancy_id,
+              profileName: profiles.profile_name,
+              verdict: vacancyMatches.vacancy_match_verdict,
+              reasons: vacancyMatches.vacancy_match_reasons
+            })
+            .from(vacancyMatches)
+            .innerJoin(resumes, and(eq(resumes.resume_id, vacancyMatches.resume_id), sql`${resumes.resume_is_current}`))
+            .innerJoin(profiles, eq(profiles.profile_id, resumes.profile_id))
+            .where(inArray(vacancyMatches.vacancy_id, vacancyIds))
+            .orderBy(asc(profiles.profile_name));
+
+    return {
+      total: counted?.total ?? 0,
+      vacancies: rows,
+      matches: matches.map(match => ({ ...match, reasons: match.reasons as unknown as IMatchReason[] }))
+    };
+  }
+
+  /**
+   * The latest choice about the position is one of those asked for, or there is none when `none` is asked for
+   *
+   * @param {AnyColumn} latestKind
+   * @param {readonly VacancyLastActionEnum[]} [lastActions]
+   *
+   * @returns {SQL | undefined}
+   */
+  private lastActionCondition(latestKind: AnyColumn, lastActions?: readonly VacancyLastActionEnum[]): SQL | undefined {
+    if (!lastActions?.length) {
+      return undefined;
+    }
+
+    const kinds = lastActions.filter(action => action !== VacancyLastActionEnum.NONE);
+
+    return or(
+      lastActions.includes(VacancyLastActionEnum.NONE) ? isNull(latestKind) : undefined,
+      kinds.length ? inArray(latestKind, kinds) : undefined
+    );
+  }
+
+  /**
    * The conditions of the filter on a vacancy row
    *
    * @param {IVacancyReportFilter} filter
@@ -129,6 +228,21 @@ export class VacancyReportRepository {
       filter.reason === undefined ? undefined : this.reasonCondition(filter.reason),
       filter.country === undefined ? undefined : eq(vacancies.vacancy_country, filter.country.toUpperCase()),
       filter.workMode === undefined ? undefined : eq(vacancies.vacancy_work_mode, filter.workMode),
+      filter.city === undefined ? undefined : ilike(vacancies.vacancy_city, filter.city.replace(LIKE_SPECIAL, '\\$&')),
+      filter.level === undefined ? undefined : eq(vacancies.vacancy_level, filter.level),
+      filter.countries?.length
+        ? inArray(
+            vacancies.vacancy_country,
+            filter.countries.map(country => country.toUpperCase())
+          )
+        : undefined,
+      filter.levels?.length ? inArray(vacancies.vacancy_level, [...filter.levels]) : undefined,
+      filter.query === undefined
+        ? undefined
+        : or(
+            ilike(vacancies.vacancy_title, this.containing(filter.query)),
+            ilike(vacancies.vacancy_company, this.containing(filter.query))
+          ),
       filter.title === undefined ? undefined : ilike(vacancies.vacancy_title, this.containing(filter.title)),
       filter.company === undefined ? undefined : ilike(vacancies.vacancy_company, this.containing(filter.company)),
       filter.sinceDays === undefined

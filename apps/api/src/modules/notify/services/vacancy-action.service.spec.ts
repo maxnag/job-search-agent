@@ -33,12 +33,23 @@ describe('VacancyActionService (unit)', () => {
     await subjectUnderTest.record(7, VacancyActionKindEnum.INTERESTED, 555);
 
     expect(notifications.createAction).toHaveBeenCalledWith(7, VacancyActionKindEnum.INTERESTED, 555);
+    expect(notifications.createMessage).toHaveBeenCalledWith(7, 555);
   });
 
   it('stores a choice made outside Telegram without a message', async () => {
     await subjectUnderTest.record(7, VacancyActionKindEnum.APPLIED);
 
     expect(notifications.createAction).toHaveBeenCalledWith(7, VacancyActionKindEnum.APPLIED, undefined);
+    expect(notifications.createMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a new choice is stored', true],
+    ['a repeat of the latest choice is not', false]
+  ])('answers whether %s', async (_case, stored) => {
+    notifications.createAction.mockResolvedValue(stored);
+
+    await expect(subjectUnderTest.record(7, VacancyActionKindEnum.APPLIED)).resolves.toBe(stored);
   });
 
   it('passes a failed write on', async () => {

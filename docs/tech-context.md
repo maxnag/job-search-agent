@@ -24,6 +24,7 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 | Agent tools | `@modelcontextprotocol/sdk`, stdio | 1.32.2 | host |
 | Web UI | Next.js (App Router), React | 16.4.6, 19.3.1 | host |
 | Web components | Mantine (`core`, `hooks`), Tabler icons | 9.8.1, 3.52.0 | host |
+| Web table | `mantine-datatable` (pagination, sorting) | 9.8.1 | host |
 | Web languages | `next-intl` (language in the address) | 4.15.3 | host |
 | Logs | `nestjs-pino`, `pino`, `pino-opentelemetry-transport` | 5.3.1, 10.4.0, 4.0.2 | host |
 | Tests | Vitest + `unplugin-swc` (`@swc/core`) | 5.1.0, 2.0.0 (1.16.22) | host |
@@ -126,4 +127,5 @@ Secrets live in `.env` (gitignored); every key is listed in `.env.example`. The 
 | `WEB_HOST`, `WEB_PORT` | address and port of the web UI (`127.0.0.1`, `3001`) |
 | `WEB_API_URL` | the API as the web server sees it — `http://<APP_HOST>:<APP_PORT>`; never sent to the browser |
 | `WEB_API_TIMEOUT_MS` | limit of one request of the web server to the API |
+| `WEB_ALLOWED_DEV_ORIGINS` | addresses besides `127.0.0.1` / `localhost` the dev server is opened by, comma-separated — the IP of the machine with `WEB_HOST=0.0.0.0` |
 | `MCP_MAX_ROWS` | most rows a list tool of an MCP server returns, whatever the client asks (default 50) |

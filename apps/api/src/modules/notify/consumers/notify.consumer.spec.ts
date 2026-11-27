@@ -79,6 +79,13 @@ describe('NotifyConsumer (unit)', () => {
       expect(notifications.sendSourceBlocked).toHaveBeenCalledWith(1);
     });
 
+    it('ticks the latest choice under the messages of a vacancy', async () => {
+      notifications.syncActions.mockResolvedValue(1);
+
+      await expect(subjectUnderTest.process(job(JobNameEnum.VACANCY_ACTION_SYNC, { vacancyId: 7 }))).resolves.toBe(1);
+      expect(notifications.syncActions).toHaveBeenCalledWith(7);
+    });
+
     it('sends the notice of a mailbox that refused the password', async () => {
       notifications.sendJobMailDisabled.mockResolvedValue(true);
 

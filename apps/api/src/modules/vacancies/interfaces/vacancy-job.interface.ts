@@ -1,5 +1,5 @@
 /**
- * Data of a job about one vacancy: `extract-vacancy`, `vacancy-closed`
+ * Data of a job about one vacancy: `extract-vacancy`, `vacancy-closed`, `vacancy-action-sync`
  */
 export interface IVacancyJob {
   /**

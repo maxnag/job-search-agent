@@ -114,6 +114,8 @@ export class NotifyConsumer extends WorkerHost {
         return this.notificationService.sendClosed(data.vacancyId ?? 0);
       case JobNameEnum.VACANCY_CHANGED:
         return this.notificationService.sendChanged(data.vacancyId ?? 0);
+      case JobNameEnum.VACANCY_ACTION_SYNC:
+        return this.notificationService.syncActions(data.vacancyId ?? 0);
       case JobNameEnum.SOURCE_BLOCKED:
         return this.notificationService.sendSourceBlocked(data.sourceId ?? 0);
 

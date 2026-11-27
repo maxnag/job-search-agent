@@ -8,11 +8,13 @@ import { AppLayout } from './app-layout';
 /**
  * Render the frame with a stand-in status and page
  *
+ * @param {boolean} [phone]
+ *
  * @returns {void}
  */
-function renderLayout(): void {
+function renderLayout(phone = false): void {
   renderWithProviders(
-    <AppLayout apiStatus={<span>status of the API</span>}>
+    <AppLayout apiStatus={<span>status of the API</span>} phone={phone}>
       <p>content of the page</p>
     </AppLayout>
   );
@@ -54,5 +56,18 @@ describe('AppLayout', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Companies' }));
 
     expect(burger.querySelector('[data-opened]')).toBeNull();
+  });
+
+  it('gives a phone the short title and the burger at any width', () => {
+    renderLayout(true);
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Job Agent' })).toBeDefined();
+    expect(screen.getByLabelText('Toggle the menu').className).not.toContain('mantine-hidden-from-sm');
+  });
+
+  it('hides the burger of a computer from a wide screen up', () => {
+    renderLayout();
+
+    expect(screen.getByLabelText('Toggle the menu').className).toContain('mantine-hidden-from-sm');
   });
 });

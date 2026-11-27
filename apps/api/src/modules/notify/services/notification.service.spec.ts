@@ -2,7 +2,13 @@ import { type DeepMocked, createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ATSKindEnum, SourceCandidateStatusEnum, VacancyMatchVerdictEnum, VacancyStageEnum } from '@job-agent/shared';
+import {
+  ATSKindEnum,
+  SourceCandidateStatusEnum,
+  VacancyActionKindEnum,
+  VacancyMatchVerdictEnum,
+  VacancyStageEnum
+} from '@job-agent/shared';
 
 import type { SourceCandidateRowType } from '../../discovery/interfaces/source-candidate-row.interface.js';
 import { SourceCandidateRepository } from '../../discovery/repositories/source-candidate.repository.js';
@@ -54,6 +60,8 @@ describe('NotificationService (unit)', () => {
     notifications = createMock<NotificationRepository>();
     candidates = createMock<SourceCandidateRepository>();
     telegram.send.mockResolvedValue(555);
+    telegram.editKeyboard.mockResolvedValue(true);
+    notifications.findUnsyncedActions.mockResolvedValue([]);
     moduleFixture = await Test.createTestingModule({
       providers: [
         NotificationService,
@@ -107,6 +115,14 @@ describe('NotificationService (unit)', () => {
       expect(notifications.markNotified).toHaveBeenCalledWith(31);
     });
 
+    it('remembers the message of the card as one that carries the buttons of the vacancy', async () => {
+      notifications.findMatchCard.mockResolvedValue(CARD);
+
+      await subjectUnderTest.sendMatch(31);
+
+      expect(notifications.createMessage).toHaveBeenCalledWith(7, 555);
+    });
+
     it.each([
       ['already told', { notifiedAt: new Date() }],
       ['of an older resume', { isCurrentResume: false }],
@@ -156,6 +172,7 @@ describe('NotificationService (unit)', () => {
       await expect(subjectUnderTest.sendChanged(7)).resolves.toBe(true);
       expect(telegram.send.mock.calls[0]?.[0]).toMatch(/^✏️ Changed/);
       expect(telegram.send.mock.calls[0]?.[1]).toBeDefined();
+      expect(notifications.createMessage).toHaveBeenCalledWith(7, 555);
     });
 
     it('sends a stopped source notice', async () => {
@@ -198,6 +215,77 @@ describe('NotificationService (unit)', () => {
       notifications.findPendingMatchIds.mockResolvedValue([]);
 
       await expect(subjectUnderTest.queuePending()).resolves.toBe(0);
+    });
+
+    it('shows the choices not synced yet under every vacancy', async () => {
+      notifications.findPendingMatchIds.mockResolvedValue([]);
+
+      await subjectUnderTest.queuePending();
+
+      expect(notifications.findUnsyncedActions).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('syncActions', () => {
+    const ACTION = { vacancyId: 7, vacancyActionId: 40, kind: VacancyActionKindEnum.APPLIED };
+
+    /**
+     * Labels of the buttons an edit put under a message
+     *
+     * @param {number} call
+     *
+     * @returns {string[]}
+     */
+    function labels(call: number): string[] {
+      return (telegram.editKeyboard.mock.calls[call]?.[1]?.inline_keyboard.flat() ?? []).map(button => button.text);
+    }
+
+    it('ticks the latest choice under every message of the vacancy and marks it synced', async () => {
+      notifications.findUnsyncedActions.mockResolvedValue([ACTION]);
+      notifications.findMessageIds.mockResolvedValue([555, 556]);
+
+      await expect(subjectUnderTest.syncActions(7)).resolves.toBe(1);
+
+      expect(notifications.findUnsyncedActions).toHaveBeenCalledWith(7);
+      expect(telegram.editKeyboard.mock.calls.map(call => call[0])).toEqual([555, 556]);
+      expect(labels(0)).toEqual(['Interested', 'Skip', '✓ Applied']);
+      expect(notifications.markActionsSynced).toHaveBeenCalledWith(7, 40);
+    });
+
+    it('forgets a message the chat no longer has and still marks the choice synced', async () => {
+      notifications.findUnsyncedActions.mockResolvedValue([ACTION]);
+      notifications.findMessageIds.mockResolvedValue([555, 556]);
+      telegram.editKeyboard.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+      await subjectUnderTest.syncActions(7);
+
+      expect(notifications.deleteMessage).toHaveBeenCalledWith(7, 555);
+      expect(notifications.deleteMessage).toHaveBeenCalledTimes(1);
+      expect(notifications.markActionsSynced).toHaveBeenCalledWith(7, 40);
+    });
+
+    it('marks a choice of a vacancy without messages synced, editing nothing', async () => {
+      notifications.findUnsyncedActions.mockResolvedValue([ACTION]);
+      notifications.findMessageIds.mockResolvedValue([]);
+
+      await subjectUnderTest.syncActions();
+
+      expect(telegram.editKeyboard).not.toHaveBeenCalled();
+      expect(notifications.markActionsSynced).toHaveBeenCalledWith(7, 40);
+    });
+
+    it('leaves the choice unsynced when Telegram refuses, for the next sweep', async () => {
+      notifications.findUnsyncedActions.mockResolvedValue([ACTION]);
+      notifications.findMessageIds.mockResolvedValue([555]);
+      telegram.editKeyboard.mockRejectedValue(new Error('Network request failed'));
+
+      await expect(subjectUnderTest.syncActions(7)).rejects.toThrow('Network request failed');
+      expect(notifications.markActionsSynced).not.toHaveBeenCalled();
+    });
+
+    it('syncs nothing when nothing waits', async () => {
+      await expect(subjectUnderTest.syncActions()).resolves.toBe(0);
+      expect(telegram.editKeyboard).not.toHaveBeenCalled();
     });
   });
 
@@ -242,9 +330,11 @@ describe('NotificationService (unit)', () => {
       await expect(subjectUnderTest.sendSourceCandidate(5)).resolves.toBe(false);
       await expect(subjectUnderTest.sendJobMailDisabled()).resolves.toBe(false);
       await expect(subjectUnderTest.queuePending()).resolves.toBe(0);
+      await expect(subjectUnderTest.syncActions(7)).resolves.toBe(0);
       expect(candidates.findOne).not.toHaveBeenCalled();
       expect(notifications.findMatchCard).not.toHaveBeenCalled();
       expect(notifications.findPendingMatchIds).not.toHaveBeenCalled();
+      expect(notifications.findUnsyncedActions).not.toHaveBeenCalled();
     });
   });
 });

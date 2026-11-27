@@ -1,4 +1,5 @@
 import type messages from '../messages/en.json';
+import type { formats } from './i18n/formats';
 import type { routing } from './i18n/routing';
 
 declare module 'next-intl' {
@@ -19,5 +20,12 @@ declare module 'next-intl' {
      * @var {object}
      */
     Messages: typeof messages;
+
+    /**
+     * Named formats — a date is formatted by its name, never by options at the call
+     *
+     * @var {object}
+     */
+    Formats: typeof formats;
   }
 }

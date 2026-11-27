@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { truncateTables, vacancyActions, vacancyMatches } from '@job-agent/db';
@@ -170,5 +171,83 @@ describe('NotificationRepository (e2e)', () => {
 
   it('refuses a press on a vacancy that does not exist', async () => {
     await expect(repository.createAction(999, VacancyActionKindEnum.SKIPPED, 555)).rejects.toThrow();
+  });
+
+  describe('the messages that carry the buttons of a vacancy', () => {
+    it('remembers each message once and lists them oldest first', async () => {
+      const vacancy = await insertVacancy(database, sourceId);
+      const other = await insertVacancy(database, sourceId);
+
+      await repository.createMessage(vacancy.vacancy_id, 556);
+      await repository.createMessage(vacancy.vacancy_id, 555);
+      await repository.createMessage(vacancy.vacancy_id, 556);
+      await repository.createMessage(other.vacancy_id, 700);
+
+      await expect(repository.findMessageIds(vacancy.vacancy_id)).resolves.toEqual([556, 555]);
+      await expect(repository.findMessageIds(999)).resolves.toEqual([]);
+    });
+
+    it('forgets one message of one vacancy', async () => {
+      const vacancy = await insertVacancy(database, sourceId);
+      const other = await insertVacancy(database, sourceId);
+
+      await repository.createMessage(vacancy.vacancy_id, 555);
+      await repository.createMessage(vacancy.vacancy_id, 556);
+      await repository.createMessage(other.vacancy_id, 555);
+      await repository.deleteMessage(vacancy.vacancy_id, 555);
+
+      await expect(repository.findMessageIds(vacancy.vacancy_id)).resolves.toEqual([556]);
+      await expect(repository.findMessageIds(other.vacancy_id)).resolves.toEqual([555]);
+    });
+  });
+
+  describe('choices not synced yet', () => {
+    it('lists the latest choice of each vacancy that has an unsynced one', async () => {
+      const first = await insertVacancy(database, sourceId);
+      const second = await insertVacancy(database, sourceId);
+      const synced = await insertVacancy(database, sourceId);
+
+      await repository.createAction(first.vacancy_id, VacancyActionKindEnum.SKIPPED);
+      await repository.createAction(first.vacancy_id, VacancyActionKindEnum.INTERESTED);
+      await repository.createAction(second.vacancy_id, VacancyActionKindEnum.APPLIED, 555);
+      await repository.createAction(synced.vacancy_id, VacancyActionKindEnum.APPLIED);
+      await database.db
+        .update(vacancyActions)
+        .set({ vacancy_action_synced_at: new Date() })
+        .where(eq(vacancyActions.vacancy_id, synced.vacancy_id));
+
+      const unsynced = await repository.findUnsyncedActions();
+
+      expect(unsynced.map(action => [action.vacancyId, action.kind])).toEqual([
+        [first.vacancy_id, VacancyActionKindEnum.INTERESTED],
+        [second.vacancy_id, VacancyActionKindEnum.APPLIED]
+      ]);
+      await expect(repository.findUnsyncedActions(second.vacancy_id)).resolves.toEqual([
+        expect.objectContaining({ vacancyId: second.vacancy_id, kind: VacancyActionKindEnum.APPLIED })
+      ]);
+    });
+
+    it('marks the choices up to the given one synced, a later one left waiting', async () => {
+      const vacancy = await insertVacancy(database, sourceId);
+
+      await repository.createAction(vacancy.vacancy_id, VacancyActionKindEnum.SKIPPED);
+      await repository.createAction(vacancy.vacancy_id, VacancyActionKindEnum.INTERESTED);
+
+      const [latest] = await repository.findUnsyncedActions(vacancy.vacancy_id);
+
+      await repository.createAction(vacancy.vacancy_id, VacancyActionKindEnum.APPLIED);
+      await repository.markActionsSynced(vacancy.vacancy_id, latest?.vacancyActionId ?? 0);
+
+      const rows = await database.db.select().from(vacancyActions).orderBy(vacancyActions.vacancy_action_id);
+
+      expect(rows.map(row => [row.vacancy_action_kind, row.vacancy_action_synced_at !== null])).toEqual([
+        [VacancyActionKindEnum.SKIPPED, true],
+        [VacancyActionKindEnum.INTERESTED, true],
+        [VacancyActionKindEnum.APPLIED, false]
+      ]);
+      await expect(repository.findUnsyncedActions(vacancy.vacancy_id)).resolves.toEqual([
+        expect.objectContaining({ kind: VacancyActionKindEnum.APPLIED })
+      ]);
+    });
   });
 });

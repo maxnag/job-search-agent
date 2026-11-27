@@ -57,11 +57,29 @@ only and any reference to it is a dead link for everyone else.
 
 - [ ] The project has one master plan in the root of `.claude/plans/`: the phases, their status, and the open
       questions not decided yet. Phases and open questions never go into `CLAUDE.md` or `docs/`
-- [ ] A phase that starts gets its own plan (or folder); the master plan links to it and marks the phase
-      `⏸️ In Progress`, and `✅` once it is merged
+- [ ] A phase that starts gets its own plan (or folder); the master plan links to it and carries the same status
+      as the phase plan — see [Plan status](#plan-status)
 - [ ] An answered open question is ticked in the master plan; the decision itself moves where it belongs —
       an ADR in `docs/decisions.md`, a rule in `.claude/rules/`, a fact in `CLAUDE.md` / `docs/`
 - [ ] The master plan stays in the root until the project's last phase is closed
+
+### Plan status
+
+The `Status` in the head of a plan always shows where the work is now. It changes in the same turn as the transition,
+and the row of the plan in the master plan changes with it.
+
+| Status | When |
+|---|---|
+| `Created` | written, not approved yet |
+| `⏸️ In Progress` | the owner approved it — the code is being written |
+| `👀 Review` | the code is done and stopped for the owner's code review |
+| `🧪 Tests & Docs` | the review is passed — tests, docs, commits |
+| `✅ Implemented` | merged (see [Closing a plan](#closing-a-plan)) |
+| `⚠️ Blocked` | waiting on something outside the plan — the reason is written in the plan |
+| `❌ Canceled` | dropped |
+
+- [ ] Change the status at every transition, never in a batch at the end
+- [ ] A plan file already sent to the owner is sent again after the change
 
 ### Creating a plan
 

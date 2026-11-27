@@ -114,7 +114,8 @@ extracted vacancy without the LLM.
 **Telegram cards, on events:** a `fit` or `almost` vacancy at once, with buttons *Interested*, *Skip*, *Applied*;
 a closed or changed vacancy the owner already saw; a stopped source; a company board the discovery found, with
 *Add as a source* / *Ignore*. `no_fit` is never sent. Presses are stored and
-used to tune the rules. The owner sends the CV themselves.
+used to tune the rules; a choice made by a button, in the web UI or through the MCP server is ticked under every
+message of its vacancy (ADR-026). The owner sends the CV themselves.
 
 ### Queues (BullMQ)
 
@@ -126,6 +127,6 @@ failure, and jobs that must survive the Mac's sleep.
 | `search` | scan a source → screened positions; discovery of boards | Job Schedulers: scans every `SEARCH_INTERVAL_HOURS` + jitter, discovery on `DISCOVER_CRON`; `concurrency: 1`, one request at a time per site |
 | `email` | read the mailbox → kinds, vacancies of the job alerts | Job Scheduler every `JOB_MAIL_INTERVAL_MINUTES`; `concurrency: 1`; removed until restart when the password is refused |
 | `extract` | open a vacancy → JSON → match → save | `EXTRACT_CONCURRENCY` (`1` for Ollama), retries with growing backoff |
-| `notify` | cards and notices to Telegram | `concurrency: 1`, one message a second; sweep of unsent cards every `NOTIFY_SWEEP_MINUTES` |
+| `notify` | cards and notices to Telegram, the tick of a choice under them | `concurrency: 1`, one message a second; sweep of unsent cards and unsynced choices every `NOTIFY_SWEEP_MINUTES` |
 
 Schedules are Job Schedulers. Bull Board is mounted in NestJS as a separate route.

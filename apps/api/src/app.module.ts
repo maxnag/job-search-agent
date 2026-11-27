@@ -13,6 +13,7 @@ import { NotifyModule } from './modules/notify/notify.module.js';
 import { QueuesModule } from './modules/queues/queues.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { SearchWorkerModule } from './modules/search/search-worker.module.js';
+import { VacanciesAPIModule } from './modules/vacancies-api/vacancies-a-p-i.module.js';
 
 /**
  * Root module of the API
@@ -29,7 +30,8 @@ import { SearchWorkerModule } from './modules/search/search-worker.module.js';
     SearchWorkerModule,
     ExtractionModule,
     JobMailWorkerModule,
-    NotifyModule
+    NotifyModule,
+    VacanciesAPIModule
   ]
 })
 export class AppModule {}

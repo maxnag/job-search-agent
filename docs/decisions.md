@@ -572,3 +572,49 @@ list to work through. There is no production: the UI lives on the owner's machin
 - (+) The vacancy list, its filters and the actions share the API's queries with the MCP server and the commands
 - (−) A second app to run (`pnpm web:dev`) and a React toolchain next to the Nest one
 - (−) Next renders on every request — the API must be running for any page with data
+
+**Amended with the vacancy list:**
+- The REST endpoints of the UI live under `/api/…` (`/api/vacancies`: the page of a filter, the values of the
+  filters, the card, the owner's choice); `/health` and Bull Board stay where they were. A query or a body is
+  validated by a Zod schema in a pipe — `400` with the code `REQUEST_INVALID`
+- The defaults of the list (Israel and Ukraine, senior and above, `fit` / `almost`, not skipped, the last three days)
+  belong to the web: an address without a filter means the default, an emptied filter is written as an empty value
+  (`country=`) and means "any". The API knows no defaults of the page
+- A phone is told by the server from its `User-Agent`, not by the width: the layout of a phone does not change when it
+  is turned. An iPad in Safari calls itself a Mac and gets the wide layout
+- What the owner chose for the view — the language, the theme, the fold of the filters per kind of device — lives in
+  cookies the server reads, so the page comes as it was left, without a flash. Every cookie of the web carries the
+  `jsa-` prefix: the projects on `localhost` share the cookies of the host, whatever the port
+- The web may listen on the network (`WEB_HOST=0.0.0.0`; `WEB_ALLOWED_DEV_ORIGINS` for the dev server) to be opened
+  from a phone in the same network. The API stays on `127.0.0.1`. There is still no login and the buttons write —
+  anyone in that network can use them, so it is for a trusted network only; outside it, `tailscale serve`
+
+---
+
+## ADR-026: A choice is ticked under every Telegram message of its vacancy
+
+**Status:** Accepted
+
+**Context:** the owner chooses *Interested / Skip / Applied* in three places — a button under a Telegram card, the
+web UI and the `record_action` tool of the MCP server. A press in Telegram ticked only the message it came from; a
+choice made elsewhere left every card of the vacancy showing the old one. A vacancy can have more than one message
+with the buttons: its card and the notice of a change. The id of a sent message was not kept anywhere.
+
+**Decision:**
+- `vacancy_messages` keeps the Telegram id of every message sent with the buttons of a vacancy (the card, the notice
+  of a change), and of the message a button was pressed under — so the cards sent before the table get in on their
+  first press. A message the chat no longer has is forgotten
+- `vacancy_actions.vacancy_action_synced_at` marks a choice shown under every message of its vacancy; a choice from
+  any channel is stored unsynced
+- The API (a press in Telegram, a choice in the web UI) queues `vacancy-action-sync` on the `notify` queue, one per
+  vacancy: the latest choice is ticked under each message (`editMessageReplyMarkup`) and every choice up to it is
+  marked synced. The MCP server has no Redis — its choices are picked up by the sweep of `NOTIFY_PENDING`, which also
+  retries a sync Telegram refused
+- Telegram sets no time limit on editing the buttons of the bot's own message in a private chat (48 hours apply to
+  business messages only), so an old card is ticked as well
+
+**Consequences:**
+- (+) The same choice everywhere: Telegram, the web UI and the MCP answers agree
+- (+) A failure of Telegram loses nothing — the choice stays unsynced until a sweep shows it
+- (−) A choice made through the MCP server reaches Telegram only with the next sweep (`NOTIFY_SWEEP_MINUTES`)
+- (−) One more table to keep in step with the messages the bot sends

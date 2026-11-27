@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Last synced commit:** `89ee529` (jobs-db MCP server)
+> **Last synced commit:** `d29ff19` (web UI phase 1 — vacancies)
 > Run `git log 89ee529..HEAD --stat` to see what changed since this doc was last updated.
 > Plus run `git status --short` and also include these changes when docs update.
 > Keep this file under 200 lines — detail belongs in `docs/`, `.claude/rules/` (path-scoped) or a skill.
@@ -35,7 +35,7 @@ Name of the file – the example "2026-11-23-mvp-digest-pipeline.md"
 
 Head of the plan — each point MUST be its own Markdown bullet-list item (a line starting with `- `). Do NOT use bare lines: Markdown collapses adjacent non-blank lines into a single paragraph. Format exactly like the bulleted list below:
 - Name of the plan, like "Plan: MVP — пайплайн дайджеста"
-- Status, like "Status: ✅ Implemented" — one of: ✅ Implemented, ⏸️ In Progress, ⚠️ Blocked, ❌ Cancelled, Created
+- Status, like "Status: ✅ Implemented" — one of: Created, ⏸️ In Progress, 👀 Review, 🧪 Tests & Docs, ✅ Implemented, ⚠️ Blocked, ❌ Canceled — changed at every transition: [plan status](.claude/rules/workflow.md#plan-status)
 - Date of creation, like "Created: 2026-11-23"
 - Date of implementation, like "Implemented: 2026-11-24"
 - The git branch name
@@ -133,8 +133,8 @@ job alerts   ─► email queue  ─► (LLM tells the kind by headers) ─► L
 - **Dedup** by URL and by normalized `company + title` (lowercase, legal suffixes like Ltd/Inc stripped) within one country
 - **Queues** (BullMQ, Redis): `search`, `email`, `extract` (`EXTRACT_CONCURRENCY`, `1` for Ollama — it serves one request at a time), `notify` (one message a second). Schedules are Job Schedulers (`upsertJobScheduler`); Bull Board is mounted as a NestJS route
 - **MCP servers** (ADR-023) are entry points of the API over a Nest context without queues; `jobs-db` answers the owner's questions in Claude Code / Claude Desktop — six read tools and `record_action`, the same choice a card button stores. Logs go to stderr — stdout is the protocol. `browser`, `gmail`, `notify` come with the agents that need them
-- **Web UI** (ADR-025): Next.js is the only door to the API — server components read it through one server-only client, the browser never knows its address; language in the address (`/en`, `/uk`), filters in the query string, Mantine
-- **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source, a company board from discovery (*Add as a source / Ignore*); buttons *Interested / Skip / Applied* are stored. The owner sends the CV themselves
+- **Web UI** (ADR-025): Next.js is the only door to the API (`/api/vacancies`) — server components read it through one server-only client, the browser never knows its address; language in the address (`/en`, `/uk`), filters in the query string, Mantine; a phone is told by `User-Agent`, view choices live in `jsa-` cookies
+- **Telegram cards on events** (ADR-019): a `fit` / `almost` vacancy at once, a closed or changed one the owner saw, a stopped source, a company board from discovery (*Add as a source / Ignore*); buttons *Interested / Skip / Applied* are stored, and a choice from any channel is ticked under every card of the vacancy (ADR-026). The owner sends the CV themselves
 
 Details: [docs/project-brief.md](docs/project-brief.md), decisions: [docs/decisions.md](docs/decisions.md).
 

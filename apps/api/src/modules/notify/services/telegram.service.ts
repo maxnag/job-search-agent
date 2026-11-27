@@ -7,6 +7,7 @@ import { SourceCandidateStatusEnum, type VacancyActionKindEnum } from '@job-agen
 import type { IEnv } from '../../../config/env.schema.js';
 import type { SourceCandidateDecisionEnum } from '../../discovery/enums/source-candidate-decision.enum.js';
 import { SourceCandidateService } from '../../discovery/services/source-candidate.service.js';
+import { PipelineEventsService } from '../../vacancies/services/pipeline-events.service.js';
 import { CANDIDATE_DATA, candidateKeyboard } from '../helpers/source-candidate-card.helper.js';
 import { ACTION_DATA, actionKeyboard } from '../helpers/vacancy-card.helper.js';
 import { VacancyActionService } from './vacancy-action.service.js';
@@ -27,6 +28,13 @@ const CANDIDATE_ANSWERS: ReadonlyMap<SourceCandidateStatusEnum, string> = new Ma
  * @type {string}
  */
 const NOT_MODIFIED = 'message is not modified';
+
+/**
+ * Description of the Telegram answer to an edit of a message the chat no longer has
+ *
+ * @type {string}
+ */
+const NOT_FOUND = 'message to edit not found';
 
 /**
  * Buttons of a keyboard as one comparable string: the label and the data of each, row by row
@@ -69,11 +77,13 @@ export class TelegramService implements OnApplicationBootstrap, OnApplicationShu
   /**
    * @param {VacancyActionService} vacancyActionService
    * @param {SourceCandidateService} sourceCandidateService
+   * @param {PipelineEventsService} pipelineEventsService
    * @param {ConfigService<IEnv, true>} configService
    */
   constructor(
     private readonly vacancyActionService: VacancyActionService,
     private readonly sourceCandidateService: SourceCandidateService,
+    private readonly pipelineEventsService: PipelineEventsService,
     private readonly configService: ConfigService<IEnv, true>
   ) {
     const token = this.configService.get('TELEGRAM_BOT_TOKEN', { infer: true });
@@ -153,6 +163,39 @@ export class TelegramService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   /**
+   * Replace the buttons under a message of the owner's chat. An edit that changes nothing counts as done
+   *
+   * @param {number} messageId
+   * @param {InlineKeyboard} keyboard
+   *
+   * @throws {Error} `TELEGRAM_NOT_CONFIGURED` without a token or a chat
+   * @throws {GrammyError} If Telegram refuses the edit for another reason
+   *
+   * @returns {Promise<boolean>} false when the chat no longer has the message
+   */
+  async editKeyboard(messageId: number, keyboard: InlineKeyboard): Promise<boolean> {
+    if (!this.bot || !this.chatId) {
+      throw new Error('TELEGRAM_NOT_CONFIGURED: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are not set');
+    }
+
+    try {
+      await this.bot.api.editMessageReplyMarkup(this.chatId, messageId, { reply_markup: keyboard });
+    } catch (error) {
+      if (error instanceof GrammyError && error.description.includes(NOT_MODIFIED)) {
+        return true;
+      }
+
+      if (error instanceof GrammyError && error.description.includes(NOT_FOUND)) {
+        return false;
+      }
+
+      throw error;
+    }
+
+    return true;
+  }
+
+  /**
    * Poll until the bot is stopped; a failure (a wrong token) is reported, not fatal
    *
    * @param {Bot} bot
@@ -171,7 +214,8 @@ export class TelegramService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   /**
-   * A button under a card was pressed: store it, tick it, confirm it. A press from another chat is ignored
+   * A button under a card was pressed: store it, tick it, confirm it, and queue the tick under the other messages of
+   * the vacancy. A press from another chat is ignored
    *
    * @param {CallbackQueryContext<Context>} context
    *
@@ -193,6 +237,10 @@ export class TelegramService implements OnApplicationBootstrap, OnApplicationShu
 
     await this.tick(context, actionKeyboard(+(vacancyId ?? 0), action));
     await context.answerCallbackQuery({ text: recorded ? 'Saved' : 'Already saved' });
+
+    if (recorded) {
+      await this.pipelineEventsService.vacancyActionRecorded(+(vacancyId ?? 0));
+    }
   }
 
   /**

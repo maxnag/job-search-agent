@@ -9,6 +9,7 @@ export enum JobNameEnum {
   VACANCY_MATCHED = 'vacancy-matched',
   VACANCY_CLOSED = 'vacancy-closed',
   VACANCY_CHANGED = 'vacancy-changed',
+  VACANCY_ACTION_SYNC = 'vacancy-action-sync',
   SOURCE_BLOCKED = 'source-blocked',
   SOURCE_CANDIDATE = 'source-candidate',
   NOTIFY_PENDING = 'notify-pending',
