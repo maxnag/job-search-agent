@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/maxnag/job-search-agent/compare/v0.9.1...v0.9.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **db:** seed ollama llm settings for every step  ([#31](https://github.com/maxnag/job-search-agent/issues/31)) ([82c27b6](https://github.com/maxnag/job-search-agent/commit/82c27b6a680cc7ec36d778cf073f876137739663))
+
 ## [0.9.1](https://github.com/maxnag/job-search-agent/compare/v0.9.0...v0.9.1) (2026-11-27)
 
 
