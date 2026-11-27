@@ -198,7 +198,8 @@ and the request parameters of each step live in the `llm_settings` table (provid
 `LLM_MODEL_*` keys are gone. The parameters are one JSONB under the provider's own names — Anthropic
 `{ max_tokens, thinking, effort }` (no temperature), Ollama `{ num_predict, temperature, num_ctx, … }` — checked by
 the provider's Zod schema; there is no separate column for any of them. The seed only inserts missing rows, so a
-tuned row survives `pnpm db:seed`.
+tuned row survives `pnpm db:seed`. It gives both providers a row per step: Haiku 5.5 for Anthropic, one local model
+(`qwen3.8:27b-mlx`) for every Ollama step.
 
 ---
 

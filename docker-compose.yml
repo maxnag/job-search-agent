@@ -13,7 +13,9 @@ services:
     ports:
       - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
     volumes:
-      - postgres-data:/var/lib/postgresql
+      # A host folder, not a named volume: on Docker Desktop volumes live inside the VM disk image,
+      # which is wiped when the disk is resized or Docker is reset. Host files survive and get into Time Machine.
+      - ${DOCKER_DATA_DIRECTORY:-./.data}/postgres:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
@@ -22,7 +24,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:8.10.3
+    image: redis:8.10.3-alpine
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec']
     environment:
@@ -30,7 +32,7 @@ services:
     ports:
       - '127.0.0.1:${REDIS_PORT:-6380}:6379'
     volumes:
-      - redis-data:/data
+      - ${DOCKER_DATA_DIRECTORY:-./.data}/redis:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -68,8 +70,7 @@ services:
     depends_on:
       - loki
 
+# Disposable data only (logs); databases are bind-mounted from DOCKER_DATA_DIRECTORY.
 volumes:
-  postgres-data:
-  redis-data:
   loki-data:
   grafana-data:

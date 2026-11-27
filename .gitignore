@@ -177,3 +177,5 @@ storage/
 *.docx
 *.odt
 !**/test/fixtures/**
+# Postgres and Redis data of docker compose
+/.data/
