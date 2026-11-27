@@ -12,7 +12,7 @@ import { AppLayout } from './app-layout';
  */
 function renderLayout(): void {
   renderWithProviders(
-    <AppLayout apiStatus={<span>status of the API</span>}>
+    <AppLayout apiStatus={<span>status of the API</span>} phone={false}>
       <p>content of the page</p>
     </AppLayout>
   );

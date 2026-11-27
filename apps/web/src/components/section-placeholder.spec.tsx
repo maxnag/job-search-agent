@@ -8,7 +8,6 @@ vi.mock('next-intl/server', () => import('../../test/next-intl-server.mock'));
 
 describe('SectionPlaceholder', () => {
   it.each([
-    ['vacancies', 'Vacancies', 'The list of vacancies with filters comes in phase 1.'],
     ['companies', 'Companies', 'Companies come in phase 2.'],
     ['sources', 'Sources', 'Sources come in phase 2.']
   ] as const)('shows the title and the note of %s', async (section, title, note) => {

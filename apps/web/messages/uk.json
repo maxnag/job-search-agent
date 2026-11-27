@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Job Search Agent"
+    "title": "Job Search Agent",
+    "shortTitle": "Job Agent"
   },
   "nav": {
     "vacancies": "Вакансії",
@@ -11,7 +12,7 @@
   "pages": {
     "vacancies": {
       "title": "Вакансії",
-      "empty": "Список вакансій із фільтрами з'явиться у фазі 1."
+      "total": "{total, plural, one {# вакансія} few {# вакансії} many {# вакансій} other {# вакансії}}"
     },
     "companies": {
       "title": "Компанії",
@@ -20,6 +21,9 @@
     "sources": {
       "title": "Джерела",
       "empty": "Джерела з'являться у фазі 2."
+    },
+    "vacancy": {
+      "title": "Вакансія"
     }
   },
   "locale": {
@@ -37,7 +41,8 @@
     "ok": "API: працює",
     "degraded": "API: працює, але база, Redis або LLM — ні",
     "down": "API: недоступний",
-    "checking": "API: перевірка…"
+    "checking": "API: перевірка…",
+    "short": "API"
   },
   "errors": {
     "title": "Щось пішло не так",
@@ -49,5 +54,113 @@
   },
   "common": {
     "loading": "Завантаження…"
+  },
+  "enums": {
+    "stage": {
+      "listed": "У списку",
+      "skipped": "Відсіяна фільтром",
+      "extracted": "Розібрана",
+      "closed": "Закрита"
+    },
+    "verdict": {
+      "fit": "Підходить",
+      "almost": "Майже",
+      "no_fit": "Не підходить"
+    },
+    "workMode": {
+      "onsite": "В офісі",
+      "hybrid": "Гібрид",
+      "remote": "Віддалено"
+    },
+    "level": {
+      "intern": "Стажер",
+      "junior": "Junior",
+      "middle": "Middle",
+      "senior": "Senior",
+      "staff": "Staff",
+      "principal": "Principal"
+    },
+    "action": {
+      "interested": "Цікаво",
+      "skipped": "Пропустити",
+      "applied": "Відгукнувся"
+    },
+    "lastAction": {
+      "interested": "Цікаво",
+      "skipped": "Пропущено",
+      "applied": "Відгукнувся",
+      "none": "Ще без вибору"
+    },
+    "hebrew": {
+      "required": "Потрібен",
+      "advantage": "Перевага",
+      "none": "Не потрібен"
+    }
+  },
+  "vacancies": {
+    "filters": {
+      "search": "Назва або компанія",
+      "searchPlaceholder": "Пошук…",
+      "stage": "Стадія",
+      "verdict": "Вердикт",
+      "country": "Країна",
+      "city": "Місто",
+      "workMode": "Формат роботи",
+      "level": "Рівень",
+      "source": "Джерело",
+      "lastAction": "Мій вибір",
+      "period": "Знайдено",
+      "reason": "Причина",
+      "reasonPlaceholder": "іврит, роки…",
+      "closed": "Показати закриті",
+      "reset": "Фільтри за замовчуванням",
+      "any": "Будь-яке",
+      "periodDays": "{days, plural, one {Останній # день} few {Останні # дні} many {Останні # днів} other {Останні # дня}}",
+      "company": "Компанія: {company}",
+      "toggle": "Фільтри"
+    },
+    "table": {
+      "title": "Назва",
+      "company": "Компанія",
+      "place": "Місце",
+      "workMode": "Формат",
+      "level": "Рівень",
+      "stage": "Стадія",
+      "verdicts": "Вердикти",
+      "lastAction": "Мій вибір",
+      "firstSeenAt": "Знайдено",
+      "empty": "Жодна вакансія не відповідає фільтрам",
+      "pagination": "{from}–{to} з {total}",
+      "perPage": "На сторінці"
+    },
+    "card": {
+      "back": "Назад до списку",
+      "original": "Відкрити оригінал",
+      "atsText": "Текст на сайті компанії",
+      "source": "Джерело",
+      "firstSeenAt": "Знайдено",
+      "lastSeenAt": "Востаннє бачили",
+      "closedAt": "Закрито",
+      "summary": "Коротко",
+      "noExtraction": "Ще не розібрано.",
+      "skipReason": "Відсіяна фільтром: {reason}",
+      "languages": "Мови програмування",
+      "required": "обов'язково",
+      "frameworks": "Фреймворки та інструменти",
+      "years": "Потрібно років досвіду",
+      "hebrew": "Іврит",
+      "verdicts": "Вердикти",
+      "noVerdicts": "Немає вердиктів щодо поточних резюме.",
+      "cleanFit": "Усі правила пройдено.",
+      "cardSent": "Картку надіслано {at}",
+      "history": "Мої рішення",
+      "noHistory": "Рішень ще немає.",
+      "notFoundTitle": "Вакансію не знайдено",
+      "notFoundDescription": "Вакансії з таким номером немає."
+    },
+    "actions": {
+      "label": "Мій вибір",
+      "failed": "Вибір не збережено — API не відповів. Спробуйте ще раз."
+    }
   }
 }

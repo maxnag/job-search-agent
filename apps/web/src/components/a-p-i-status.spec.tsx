@@ -18,7 +18,7 @@ describe('APIStatus', () => {
   ])('shows %s as its text in its colour', async (status, text, color) => {
     vi.mocked(getAPIHealth).mockResolvedValue(status);
 
-    renderWithProviders(await APIStatus());
+    renderWithProviders(await APIStatus({}));
 
     const badge = screen.getByText(text).closest('.mantine-Badge-root');
 
@@ -28,7 +28,7 @@ describe('APIStatus', () => {
 
 describe('APIStatusFallback', () => {
   it('shows a grey "checking" while the API is asked', async () => {
-    renderWithProviders(await APIStatusFallback());
+    renderWithProviders(await APIStatusFallback({}));
 
     const badge = screen.getByText('API: checking…').closest('.mantine-Badge-root');
 

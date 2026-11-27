@@ -9,3 +9,4 @@ export * from './sources.table.js';
 export * from './vacancies.table.js';
 export * from './vacancy-actions.table.js';
 export * from './vacancy-matches.table.js';
+export * from './vacancy-messages.table.js';

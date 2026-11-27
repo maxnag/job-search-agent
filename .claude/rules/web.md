@@ -38,6 +38,8 @@ installed version live in `node_modules/next/dist/docs` — read them before wri
 - [ ] Every visible text is a key in both `messages/en.json` and `messages/uk.json` — never a literal in a component;
       the keys are typed through `AppConfig` (`src/global.ts`)
 - [ ] Filters and the page state that a link should keep live in the query string, never only in component state
+- [ ] Every cookie of the web is named with the `jsa-` prefix (`jsa-locale`, `jsa-filters-open`), a library's cookie
+      included where it can be renamed — the projects on `localhost` share the cookies of the host, whatever the port
 - [ ] Every page exports `generateMetadata` with its own title; the layout adds the application name by the template
 
 ## Files and names

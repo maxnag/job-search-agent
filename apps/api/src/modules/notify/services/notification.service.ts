@@ -78,7 +78,9 @@ export class NotificationService {
       return false;
     }
 
-    await this.telegramService.send(formatMatchCard(card), actionKeyboard(card.vacancyId));
+    const messageId = await this.telegramService.send(formatMatchCard(card), actionKeyboard(card.vacancyId));
+
+    await this.notificationRepository.createMessage(card.vacancyId, messageId);
     await this.notificationRepository.markNotified(vacancyMatchId);
     this.logger.log({ message: 'Card sent', vacancyId: card.vacancyId, vacancyMatchId, verdict: card.verdict });
 
@@ -131,7 +133,9 @@ export class NotificationService {
       return false;
     }
 
-    await this.telegramService.send(formatChangedNotice(vacancy), actionKeyboard(vacancyId));
+    const messageId = await this.telegramService.send(formatChangedNotice(vacancy), actionKeyboard(vacancyId));
+
+    await this.notificationRepository.createMessage(vacancyId, messageId);
     this.logger.log({ message: 'Changed notice sent', vacancyId });
 
     return true;
@@ -208,7 +212,11 @@ export class NotificationService {
   }
 
   /**
-   * Queue the cards not sent yet — verdicts stored by a command, or before the bot was configured
+   * Queue the cards not sent yet — verdicts stored by a command, or before the bot was configured — and show the
+   * choices not shown yet under the messages of their vacancies: a choice made through the MCP server, or a sync
+   * Telegram refused
+   *
+   * @throws {GrammyError} If Telegram refuses an edit for a reason other than a message it no longer has
    *
    * @returns {Promise<number>} The number of cards queued
    */
@@ -225,6 +233,48 @@ export class NotificationService {
       this.logger.log({ message: 'Pending cards queued', cards: pending.length });
     }
 
+    await this.syncActions();
+
     return pending.length;
+  }
+
+  /**
+   * Show the latest choice about each vacancy with a choice not shown yet under every Telegram message of the
+   * vacancy; a message the chat no longer has is forgotten. Without Telegram nothing is synced and the choices wait
+   *
+   * @param {number} [vacancyId] Only this vacancy
+   *
+   * @throws {GrammyError} If Telegram refuses an edit for a reason other than a message it no longer has
+   *
+   * @returns {Promise<number>} The number of vacancies synced
+   */
+  async syncActions(vacancyId?: number): Promise<number> {
+    if (!this.telegramService.isConfigured) {
+      return 0;
+    }
+
+    const actions = await this.notificationRepository.findUnsyncedActions(vacancyId);
+
+    for (const action of actions) {
+      const messageIds = await this.notificationRepository.findMessageIds(action.vacancyId);
+
+      for (const messageId of messageIds) {
+        const shown = await this.telegramService.editKeyboard(messageId, actionKeyboard(action.vacancyId, action.kind));
+
+        if (!shown) {
+          await this.notificationRepository.deleteMessage(action.vacancyId, messageId);
+          this.logger.debug({ message: 'Vacancy message gone', vacancyId: action.vacancyId, messageId });
+        }
+      }
+
+      await this.notificationRepository.markActionsSynced(action.vacancyId, action.vacancyActionId);
+      this.logger.debug({ message: 'Vacancy action synced', vacancyId: action.vacancyId, kind: action.kind, messages: messageIds.length });
+    }
+
+    if (actions.length > 0) {
+      this.logger.log({ message: 'Vacancy actions synced', vacancies: actions.length });
+    }
+
+    return actions.length;
   }
 }

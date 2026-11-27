@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Job Search Agent"
+    "title": "Job Search Agent",
+    "shortTitle": "Job Agent"
   },
   "nav": {
     "vacancies": "Vacancies",
@@ -11,7 +12,7 @@
   "pages": {
     "vacancies": {
       "title": "Vacancies",
-      "empty": "The list of vacancies with filters comes in phase 1."
+      "total": "{total, plural, one {# vacancy} other {# vacancies}}"
     },
     "companies": {
       "title": "Companies",
@@ -20,6 +21,9 @@
     "sources": {
       "title": "Sources",
       "empty": "Sources come in phase 2."
+    },
+    "vacancy": {
+      "title": "Vacancy"
     }
   },
   "locale": {
@@ -37,7 +41,8 @@
     "ok": "API: running",
     "degraded": "API: running, but a database, Redis or the LLM is not",
     "down": "API: not reachable",
-    "checking": "API: checking…"
+    "checking": "API: checking…",
+    "short": "API"
   },
   "errors": {
     "title": "Something went wrong",
@@ -49,5 +54,113 @@
   },
   "common": {
     "loading": "Loading…"
+  },
+  "enums": {
+    "stage": {
+      "listed": "Listed",
+      "skipped": "Skipped by filter",
+      "extracted": "Extracted",
+      "closed": "Closed"
+    },
+    "verdict": {
+      "fit": "Fit",
+      "almost": "Almost",
+      "no_fit": "No fit"
+    },
+    "workMode": {
+      "onsite": "On site",
+      "hybrid": "Hybrid",
+      "remote": "Remote"
+    },
+    "level": {
+      "intern": "Intern",
+      "junior": "Junior",
+      "middle": "Middle",
+      "senior": "Senior",
+      "staff": "Staff",
+      "principal": "Principal"
+    },
+    "action": {
+      "interested": "Interested",
+      "skipped": "Skip",
+      "applied": "Applied"
+    },
+    "lastAction": {
+      "interested": "Interested",
+      "skipped": "Skipped",
+      "applied": "Applied",
+      "none": "No choice yet"
+    },
+    "hebrew": {
+      "required": "Required",
+      "advantage": "An advantage",
+      "none": "Not needed"
+    }
+  },
+  "vacancies": {
+    "filters": {
+      "search": "Title or company",
+      "searchPlaceholder": "Search…",
+      "stage": "Stage",
+      "verdict": "Verdict",
+      "country": "Country",
+      "city": "City",
+      "workMode": "Work mode",
+      "level": "Level",
+      "source": "Source",
+      "lastAction": "My choice",
+      "period": "Found",
+      "reason": "Reason",
+      "reasonPlaceholder": "Hebrew, years…",
+      "closed": "Show closed",
+      "reset": "Default filters",
+      "any": "Any",
+      "periodDays": "{days, plural, one {Last day} other {Last # days}}",
+      "company": "Company: {company}",
+      "toggle": "Filters"
+    },
+    "table": {
+      "title": "Title",
+      "company": "Company",
+      "place": "Place",
+      "workMode": "Mode",
+      "level": "Level",
+      "stage": "Stage",
+      "verdicts": "Verdicts",
+      "lastAction": "My choice",
+      "firstSeenAt": "Found",
+      "empty": "No vacancies match the filters",
+      "pagination": "{from}–{to} of {total}",
+      "perPage": "Per page"
+    },
+    "card": {
+      "back": "Back to the list",
+      "original": "Open the original",
+      "atsText": "Text on the company board",
+      "source": "Source",
+      "firstSeenAt": "Found",
+      "lastSeenAt": "Last seen",
+      "closedAt": "Closed",
+      "summary": "Summary",
+      "noExtraction": "Not extracted yet.",
+      "skipReason": "Skipped by the filter: {reason}",
+      "languages": "Programming languages",
+      "required": "required",
+      "frameworks": "Frameworks and tools",
+      "years": "Years required",
+      "hebrew": "Hebrew",
+      "verdicts": "Verdicts",
+      "noVerdicts": "No verdicts against the current resumes.",
+      "cleanFit": "Every rule passed.",
+      "cardSent": "Card sent {at}",
+      "history": "My choices",
+      "noHistory": "No choice made yet.",
+      "notFoundTitle": "Vacancy not found",
+      "notFoundDescription": "There is no vacancy with this number."
+    },
+    "actions": {
+      "label": "My choice",
+      "failed": "The choice was not saved — the API did not answer. Try again."
+    }
   }
 }

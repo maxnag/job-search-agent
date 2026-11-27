@@ -365,6 +365,12 @@ importers:
       '@tabler/icons-react':
         specifier: ^3.52.0
         version: 3.52.0(react@19.3.1)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      mantine-datatable:
+        specifier: ^9.8.1
+        version: 9.8.1(@mantine/core@9.8.1(@mantine/hooks@9.8.1(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@mantine/hooks@9.8.1(react@19.3.1))(clsx@2.1.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: ^16.4.6
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -3762,6 +3768,15 @@ packages:
   mailparser@3.14.5:
     resolution: {integrity: sha512-GVX8bONBtUW7FaakHZX2yUIxzWFAseKltj7GaoFnbwWEf8/+0a5WrjCH+WPJEyaNPFTf5tosEuKPwGkd5LpO6A==}
     engines: {node: '>=20.0.0'}
+
+  mantine-datatable@9.8.1:
+    resolution: {integrity: sha512-Pxy27pfjtJauRnm6osG9HsMhPpJAO+j58EzSPxkczYLS53fNxYaqQ8xa5C/wjYgiNReCD1DVybrQN44iA2OcSg==}
+    peerDependencies:
+      '@mantine/core': '>=9.0'
+      '@mantine/hooks': '>=9.0'
+      clsx: '>=2'
+      react: '>=19'
+      react-dom: '>=19'
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -7914,6 +7929,14 @@ snapshots:
       nodemailer: 10.6.0
       punycode.js: 2.3.1
       tlds: 1.261.0
+
+  mantine-datatable@9.8.1(@mantine/core@9.8.1(@mantine/hooks@9.8.1(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@mantine/hooks@9.8.1(react@19.3.1))(clsx@2.1.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      '@mantine/core': 9.8.1(@mantine/hooks@9.8.1(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@mantine/hooks': 9.8.1(react@19.3.1)
+      clsx: 2.1.1
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   math-intrinsics@1.1.0: {}
 

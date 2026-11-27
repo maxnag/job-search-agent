@@ -27,17 +27,31 @@ const LABELS: Readonly<Record<APIHealthStatusEnum, 'ok' | 'degraded' | 'down'>> 
 };
 
 /**
+ * Props of the badge of the API state
+ */
+interface IAPIStatusProps {
+  /**
+   * Show only the word API, its color telling the state — the header of a phone has no room for more
+   *
+   * @var {boolean}
+   */
+  readonly compact?: boolean;
+}
+
+/**
  * Badge with the state of the API — an async server component: it awaits the API on the server, the browser gets
  * the finished badge
  *
+ * @param {IAPIStatusProps} props
+ *
  * @returns {Promise<React.JSX.Element>}
  */
-export async function APIStatus(): Promise<React.JSX.Element> {
+export async function APIStatus({ compact = false }: Readonly<IAPIStatusProps>): Promise<React.JSX.Element> {
   const [status, t] = await Promise.all([getAPIHealth(), getTranslations('apiStatus')]);
 
   return (
-    <Badge color={COLORS[status]} variant="light">
-      {t(LABELS[status])}
+    <Badge color={COLORS[status]} variant="light" title={t(LABELS[status])}>
+      {compact ? t('short') : t(LABELS[status])}
     </Badge>
   );
 }
@@ -45,14 +59,16 @@ export async function APIStatus(): Promise<React.JSX.Element> {
 /**
  * Badge shown while the state of the API is not known yet — the fallback of the Suspense boundary
  *
+ * @param {IAPIStatusProps} props
+ *
  * @returns {Promise<React.JSX.Element>}
  */
-export async function APIStatusFallback(): Promise<React.JSX.Element> {
+export async function APIStatusFallback({ compact = false }: Readonly<IAPIStatusProps>): Promise<React.JSX.Element> {
   const t = await getTranslations('apiStatus');
 
   return (
-    <Badge color="gray" variant="light">
-      {t('checking')}
+    <Badge color="gray" variant="light" title={t('checking')}>
+      {compact ? t('short') : t('checking')}
     </Badge>
   );
 }

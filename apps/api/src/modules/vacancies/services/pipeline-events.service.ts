@@ -91,6 +91,20 @@ export class PipelineEventsService {
   }
 
   /**
+   * Show the owner's latest choice about a vacancy under its Telegram messages; a sync already waiting is not queued
+   * twice — it reads the latest choice when it runs
+   *
+   * @param {number} vacancyId
+   *
+   * @returns {Promise<void>}
+   */
+  async vacancyActionRecorded(vacancyId: number): Promise<void> {
+    await this.notifyQueue.add(JobNameEnum.VACANCY_ACTION_SYNC, { vacancyId } satisfies IVacancyJob, {
+      deduplication: { id: `${JobNameEnum.VACANCY_ACTION_SYNC}:${vacancyId}` }
+    });
+  }
+
+  /**
    * Tell the owner the crawler stopped a source
    *
    * @param {number} sourceId

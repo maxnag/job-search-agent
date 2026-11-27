@@ -35,7 +35,7 @@ Name of the file – the example "2026-11-23-mvp-digest-pipeline.md"
 
 Head of the plan — each point MUST be its own Markdown bullet-list item (a line starting with `- `). Do NOT use bare lines: Markdown collapses adjacent non-blank lines into a single paragraph. Format exactly like the bulleted list below:
 - Name of the plan, like "Plan: MVP — пайплайн дайджеста"
-- Status, like "Status: ✅ Implemented" — one of: ✅ Implemented, ⏸️ In Progress, ⚠️ Blocked, ❌ Cancelled, Created
+- Status, like "Status: ✅ Implemented" — one of: Created, ⏸️ In Progress, 👀 Review, 🧪 Tests & Docs, ✅ Implemented, ⚠️ Blocked, ❌ Canceled — changed at every transition: [plan status](.claude/rules/workflow.md#plan-status)
 - Date of creation, like "Created: 2026-11-23"
 - Date of implementation, like "Implemented: 2026-11-24"
 - The git branch name

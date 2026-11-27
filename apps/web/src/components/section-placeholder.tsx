@@ -8,9 +8,9 @@ interface ISectionPlaceholderProps {
   /**
    * Section whose title and text are shown
    *
-   * @var {'vacancies' | 'companies' | 'sources'}
+   * @var {'companies' | 'sources'}
    */
-  readonly section: 'vacancies' | 'companies' | 'sources';
+  readonly section: 'companies' | 'sources';
 }
 
 /**

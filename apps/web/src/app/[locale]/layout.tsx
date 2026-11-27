@@ -1,15 +1,19 @@
-import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
+import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
 import '@mantine/core/styles.css';
+import 'mantine-datatable/styles.css';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { APIStatus, APIStatusFallback } from '@/components/a-p-i-status';
 import { AppLayout } from '@/components/app-layout';
+import { COLOR_SCHEME_COOKIE, parseColorScheme } from '@/components/color-scheme.cookie';
+import { ThemeProvider } from '@/components/theme-provider';
 import { routing } from '@/i18n/routing';
-import { theme } from '@/theme';
+import { isPhone } from '@/server/device';
 
 /**
  * Both languages are known in advance — Next builds a variant of the frame for each
@@ -47,24 +51,28 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
     notFound();
   }
 
+  const [phone, jar] = await Promise.all([isPhone(), cookies()]);
+  const colorScheme = parseColorScheme(jar.get(COLOR_SCHEME_COOKIE)?.value);
+
   return (
-    <html lang={locale} {...mantineHtmlProps}>
+    <html lang={locale} {...mantineHtmlProps} data-mantine-color-scheme={colorScheme === 'auto' ? 'light' : colorScheme}>
       <head>
-        <ColorSchemeScript defaultColorScheme="auto" />
+        <ColorSchemeScript defaultColorScheme={colorScheme} localStorageKey={COLOR_SCHEME_COOKIE} />
       </head>
       <body>
-        <MantineProvider theme={theme} defaultColorScheme="auto">
+        <ThemeProvider colorScheme={colorScheme}>
           <NextIntlClientProvider>
             <AppLayout
+              phone={phone}
               apiStatus={
-                <Suspense fallback={<APIStatusFallback />}>
-                  <APIStatus />
+                <Suspense fallback={<APIStatusFallback compact={phone} />}>
+                  <APIStatus compact={phone} />
                 </Suspense>
               }>
               {children}
             </AppLayout>
           </NextIntlClientProvider>
-        </MantineProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import type { VacancyMatchVerdictEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
+import type { SeniorityLevelEnum, VacancyLastActionEnum, VacancyMatchVerdictEnum, VacancyStageEnum, WorkModeEnum } from '@job-agent/shared';
 
 /**
  * Which positions the report shows: every condition given must hold, the values of one condition are alternatives
@@ -59,6 +59,48 @@ export interface IVacancyReportFilter {
    * @var {string}
    */
   readonly company?: string;
+
+  /**
+   * Country of the position is one of these ISO codes
+   *
+   * @var {readonly string[]}
+   */
+  readonly countries?: readonly string[];
+
+  /**
+   * At one of these seniority levels
+   *
+   * @var {readonly SeniorityLevelEnum[]}
+   */
+  readonly levels?: readonly SeniorityLevelEnum[];
+
+  /**
+   * City, case aside
+   *
+   * @var {string}
+   */
+  readonly city?: string;
+
+  /**
+   * Seniority level
+   *
+   * @var {SeniorityLevelEnum}
+   */
+  readonly level?: SeniorityLevelEnum;
+
+  /**
+   * The title or the company contains the text, case aside
+   *
+   * @var {string}
+   */
+  readonly query?: string;
+
+  /**
+   * The latest choice of the owner about the position is one of these, `none` standing for no choice made yet
+   *
+   * @var {readonly VacancyLastActionEnum[]}
+   */
+  readonly lastActions?: readonly VacancyLastActionEnum[];
 
   /**
    * First seen within this many days

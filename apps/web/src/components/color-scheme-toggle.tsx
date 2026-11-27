@@ -1,7 +1,6 @@
 'use client';
 
 import { SegmentedControl, VisuallyHidden, useMantineColorScheme } from '@mantine/core';
-import { useMounted } from '@mantine/hooks';
 import { IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react';
 import { useTranslations } from 'next-intl';
 
@@ -17,20 +16,14 @@ const SCHEMES = [
 ] as const;
 
 /**
- * Switch of the theme: light, dark or the system one. The chosen theme lives in the browser storage, which the server
- * cannot read — so the switch renders only after the page is mounted, otherwise the server and the browser would draw
- * different HTML (a hydration mismatch)
+ * Switch of the theme: light, dark or the system one. The chosen theme lives in a cookie the server reads, so the
+ * switch is drawn on the server with the right value and stays in place while the page loads
  *
- * @returns {React.JSX.Element | null}
+ * @returns {React.JSX.Element}
  */
-export function ColorSchemeToggle(): React.JSX.Element | null {
+export function ColorSchemeToggle(): React.JSX.Element {
   const t = useTranslations('colorScheme');
   const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const mounted = useMounted();
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <SegmentedControl
