@@ -69,12 +69,15 @@ export class OllamaLLMClient extends LLMClient {
    */
   async generateBySchema<TOutput>(request: ISchemaRequest<TOutput>): Promise<ISchemaResult<TOutput>> {
     const settings = await this.llmSettingsService.findOne(request.step, ollamaParamsSchema);
+    const { think, keep_alive, ...options } = settings.params;
     const messages = request.system ? [{ role: 'system', content: request.system }] : [];
     const response = await this.createClient(this.timeoutMs).chat({
       model: settings.model,
       messages: [...messages, { role: 'user', content: request.prompt }],
       format: z.toJSONSchema(request.schema),
-      options: settings.params,
+      think,
+      keep_alive,
+      options,
       stream: false
     });
 
