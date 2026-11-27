@@ -24,18 +24,27 @@ describe('llmSettingsSeed', () => {
     );
   });
 
-  it('gives every step an Anthropic row with max_tokens and thinking off', async () => {
+  it('gives every step a row of each provider with thinking off', async () => {
     await llmSettingsSeed.run({} as DatabaseExecutor);
 
     const [[{ rows }]] = insertMissingRows.mock.calls as unknown as [[{ rows: Record<string, unknown>[] }]];
 
     const byName = (first: string, second: string): number => first.localeCompare(second);
+    const expected = Object.values(LLMProviderEnum).flatMap(provider => Object.values(LLMStepEnum).map(step => `${provider}/${step}`));
 
-    expect(rows.map(row => String(row.llm_setting_step)).sort(byName)).toEqual(Object.values(LLMStepEnum).sort(byName));
-    expect(rows.every(row => row.llm_setting_provider === LLMProviderEnum.ANTHROPIC)).toBe(true);
-    expect(rows.find(row => row.llm_setting_step === LLMStepEnum.RESUME)?.llm_setting_params).toEqual({
-      max_tokens: 8192,
-      thinking: 'disabled'
-    });
+    expect(rows.map(row => `${String(row.llm_setting_provider)}/${String(row.llm_setting_step)}`).sort(byName)).toEqual(
+      expected.toSorted(byName)
+    );
+
+    const rowOf = (provider: LLMProviderEnum): Record<string, unknown> | undefined =>
+      rows.find(row => row.llm_setting_provider === provider && row.llm_setting_step === LLMStepEnum.RESUME);
+
+    expect(rowOf(LLMProviderEnum.ANTHROPIC)?.llm_setting_params).toEqual({ max_tokens: 8192, thinking: 'disabled' });
+    expect(rowOf(LLMProviderEnum.OLLAMA)).toEqual(
+      expect.objectContaining({
+        llm_setting_model: 'qwen3.8:27b-mlx',
+        llm_setting_params: { num_predict: 8192, num_ctx: 16384, think: false }
+      })
+    );
   });
 });
