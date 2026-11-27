@@ -37,7 +37,9 @@ ranges, the lockfile holds the versions below. Peer compatibility was checked by
 
 - **LLM provider is a setting:** `LLM_PROVIDER=anthropic` (Claude Haiku 5.5, `claude-haiku-5-5`) while development
   runs on Linux without Ollama; `LLM_PROVIDER=ollama` with Qwen3 9B / 27B on the Mac. Model, `max_tokens` and
-  provider parameters of each step are rows of the `llm_settings` table (ADR-012 amendment)
+  provider parameters of each step are rows of the `llm_settings` table (ADR-012 amendment). Thinking is a required
+  parameter of every step on both providers: `thinking` for Anthropic, `think` for Ollama (`false` or `low` / `medium` /
+  `high`); Ollama's optional `keep_alive` sets how long the model stays loaded (the server default, 5 minutes, when absent)
 - **LLM budget:** local is $0; Haiku 5.5 costs $0.10 / $0.50 per 1M input / output tokens
 - **NestJS 12:** the core is ESM; `@nestjs/config` validates env with a Standard Schema (Zod) asynchronously
 - **BullMQ 6:** legacy repeatable jobs are gone — schedules via `upsertJobScheduler`; worker connections use
