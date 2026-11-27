@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/maxnag/job-search-agent/compare/v0.9.2...v0.10.0) (2026-11-27)
+
+
+### Features
+
+* **web:** vacancy list, card and actions with telegram sync ([#33](https://github.com/maxnag/job-search-agent/issues/33)) ([143a4d5](https://github.com/maxnag/job-search-agent/commit/143a4d5de0c13baa134e3090dff9ae03f91383b2))
+
 ## [0.9.2](https://github.com/maxnag/job-search-agent/compare/v0.9.1...v0.9.2) (2026-11-27)
 
 
